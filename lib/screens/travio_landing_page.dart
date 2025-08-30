@@ -5,7 +5,7 @@ import 'package:travio/widgets/cta_section.dart';
 import 'package:travio/widgets/app_footer.dart';
 import 'package:travio/widgets/landing_page/getting_started_section.dart';
 
-class TravioLandingPage extends StatelessWidget {
+class TravioLandingPage extends StatefulWidget {
   final VoidCallback onThemeToggle;
 
   const TravioLandingPage({
@@ -14,14 +14,24 @@ class TravioLandingPage extends StatelessWidget {
   });
 
   @override
+  State<TravioLandingPage> createState() => _TravioLandingPageState();
+}
+
+class _TravioLandingPageState extends State<TravioLandingPage> {
+  final _landingScrollController = ScrollController();
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
+        controller: _landingScrollController,
         child: Center(
           child: Column(
             children: [
-              AppHeader(onThemeToggle: onThemeToggle),
-              const GettingStartedSection(),
+              AppHeader(onThemeToggle: widget.onThemeToggle),
+              GettingStartedSection(
+                landingScrollController: _landingScrollController,
+              ),
               const FeaturesSection(),
               const CTASection(),
               const AppFooter(),
