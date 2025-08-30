@@ -1,43 +1,46 @@
 import 'package:flutter/material.dart';
 
 class LightModeColors {
-  static const lightPrimary = Color(0xFF2563EB);
+  // Sunny Beach Day Palette
+  static const lightPrimary = Color(0xFF2A9D8F); // Teal from palette
   static const lightOnPrimary = Color(0xFFFFFFFF);
-  static const lightPrimaryContainer = Color(0xFFDEECFF);
-  static const lightOnPrimaryContainer = Color(0xFF0A2472);
-  static const lightSecondary = Color(0xFF059669);
+  static const lightPrimaryContainer = Color(0xFFE9C46A); // Yellow from palette
+  static const lightOnPrimaryContainer =
+      Color(0xFF264653); // Dark teal from palette
+  static const lightSecondary = Color(0xFFF4A261); // Orange from palette
   static const lightOnSecondary = Color(0xFFFFFFFF);
-  static const lightTertiary = Color(0xFFF59E0B);
+  static const lightTertiary = Color(0xFFE76F51); // Coral from palette
   static const lightOnTertiary = Color(0xFFFFFFFF);
-  static const lightError = Color(0xFFDC2626);
+  static const lightError = Color(0xFFE76F51); // Using coral for error
   static const lightOnError = Color(0xFFFFFFFF);
-  static const lightErrorContainer = Color(0xFFFEE2E2);
-  static const lightOnErrorContainer = Color(0xFF7F1D1D);
-  static const lightInversePrimary = Color(0xFF93C5FD);
+  static const lightErrorContainer = Color(0xFFFFF3E0);
+  static const lightOnErrorContainer = Color(0xFF264653);
+  static const lightInversePrimary = Color(0xFFE9C46A);
   static const lightShadow = Color(0xFF000000);
-  static const lightSurface = Color(0xFFFFFFFF);
-  static const lightOnSurface = Color(0xFF1F2937);
-  static const lightAppBarBackground = Color(0xFFFFFFFF);
+  static const lightSurface = Color(0xFFFFFDF7); // Warm white
+  static const lightOnSurface = Color(0xFF264653); // Dark teal
+  static const lightAppBarBackground = Color(0xFFFFFDF7);
 }
 
 class DarkModeColors {
-  static const darkPrimary = Color(0xFF60A5FA);
-  static const darkOnPrimary = Color(0xFF0A2472);
-  static const darkPrimaryContainer = Color(0xFF1D4ED8);
-  static const darkOnPrimaryContainer = Color(0xFFDEECFF);
-  static const darkSecondary = Color(0xFF34D399);
-  static const darkOnSecondary = Color(0xFF064E3B);
-  static const darkTertiary = Color(0xFFFBBF24);
-  static const darkOnTertiary = Color(0xFF78350F);
-  static const darkError = Color(0xFFEF4444);
-  static const darkOnError = Color(0xFF7F1D1D);
-  static const darkErrorContainer = Color(0xFFB91C1C);
-  static const darkOnErrorContainer = Color(0xFFFEE2E2);
-  static const darkInversePrimary = Color(0xFF2563EB);
+  // Dark version of Sunny Beach Day Palette
+  static const darkPrimary = Color(0xFF52C7B8); // Lighter teal for dark mode
+  static const darkOnPrimary = Color(0xFF264653);
+  static const darkPrimaryContainer = Color(0xFF1A5D52); // Darker teal
+  static const darkOnPrimaryContainer = Color(0xFFE9C46A);
+  static const darkSecondary = Color(0xFFF4A261); // Keep orange
+  static const darkOnSecondary = Color(0xFF264653);
+  static const darkTertiary = Color(0xFFE76F51); // Keep coral
+  static const darkOnTertiary = Color(0xFF264653);
+  static const darkError = Color(0xFFE76F51); // Using coral for error
+  static const darkOnError = Color(0xFF264653);
+  static const darkErrorContainer = Color(0xFF8B4A3A);
+  static const darkOnErrorContainer = Color(0xFFFFE4DE);
+  static const darkInversePrimary = Color(0xFF2A9D8F);
   static const darkShadow = Color(0xFF000000);
-  static const darkSurface = Color(0xFF0F172A);
-  static const darkOnSurface = Color(0xFFF1F5F9);
-  static const darkAppBarBackground = Color(0xFF1E293B);
+  static const darkSurface = Color(0xFF1A2B2E); // Dark teal surface
+  static const darkOnSurface = Color(0xFF52C7B8); // Yellow text
+  static const darkAppBarBackground = Color(0xFF264653); // Darkest teal
 }
 
 class FontSizes {

@@ -77,32 +77,26 @@ class GettingStartedSection extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {},
-                        label: Text(
-                          'Start Planning',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          elevation: 4,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 24,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                        ),
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    label: Text(
+                      'Start Planning',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 4,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 24,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
                   ),
                 ],
               ),
