@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:travio/models/place.dart';
+import 'package:travio/services/places_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/hoverable_image.dart';
 
@@ -19,6 +22,10 @@ class GettingStartedSection extends StatefulWidget {
 class _GettingStartedSectionState extends State<GettingStartedSection> {
   final TextEditingController _placeTextController = TextEditingController();
   final FocusNode _placeTextFocusNode = FocusNode();
+  Timer? _searchTimer;
+  List<Place> _searchResults = [];
+  List<PlaceSuggestion> _suggestions = [];
+  bool _isSearching = false;
 
   bool get _hasPlaceFieldFocus => _placeTextFocusNode.hasFocus;
 
@@ -47,6 +54,90 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    _placeTextController.dispose();
+    _placeTextFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    // Cancel previous timer
+    _searchTimer?.cancel();
+
+    if (query.isEmpty) {
+      setState(() {
+        _suggestions.clear();
+        _searchResults.clear();
+        _isSearching = false;
+      });
+      return;
+    }
+
+    // Debounce search requests
+    _searchTimer = Timer(const Duration(milliseconds: 500), () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.isEmpty) return;
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      // Get autocomplete suggestions
+      final suggestions = await PlacesService.getAutocompleteSuggestions(query);
+
+      // Get search results
+      final places = await PlacesService.searchPlaces(query);
+
+      print('🔍 Search Query: "$query"');
+      print('📝 Autocomplete Suggestions (${suggestions.length}):');
+      for (int i = 0; i < suggestions.length && i < 5; i++) {
+        final suggestion = suggestions[i];
+        print(
+            '  ${i + 1}. ${suggestion.mainText} - ${suggestion.secondaryText}');
+      }
+
+      print('📍 Places Found (${places.length}):');
+      for (int i = 0; i < places.length && i < 5; i++) {
+        final place = places[i];
+        print('  ${i + 1}. ${place.name}');
+        print('     Address: ${place.displayAddress}');
+        print('     Rating: ${place.rating ?? 'N/A'}');
+        print('     Types: ${place.types.take(3).join(', ')}');
+        if (place.hasLocation) {
+          print('     Location: ${place.latitude}, ${place.longitude}');
+        }
+        print('');
+      }
+
+      setState(() {
+        _suggestions = suggestions;
+        _searchResults = places;
+        _isSearching = false;
+      });
+    } catch (e) {
+      print('❌ Search Error: $e');
+      setState(() {
+        _isSearching = false;
+        _suggestions.clear();
+        _searchResults.clear();
+      });
+    }
+  }
+
+  void _onSearchSubmitted(String query) {
+    if (query.isNotEmpty) {
+      print('🚀 Search Submitted: "$query"');
+      _performSearch(query);
+    }
   }
 
   @override
@@ -129,8 +220,8 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                         child: TextField(
                           controller: _placeTextController,
                           focusNode: _placeTextFocusNode,
-                          onChanged: (value) => setState(() {}),
-                          onSubmitted: (value) => setState(() {}),
+                          onChanged: _onSearchChanged,
+                          onSubmitted: _onSearchSubmitted,
                           textInputAction: TextInputAction.search,
                           style: Theme.of(context)
                               .textTheme
@@ -149,7 +240,9 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                                     .colorScheme
                                     .outline
                                     .withAlpha(100),
-                            hintText: 'Where would you like to go? Or click 👉',
+                            hintText: _isSearching
+                                ? 'Searching...'
+                                : 'Where would you like to go? Or click 👉',
                             hintStyle: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -184,7 +277,10 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                             suffixIcon: Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: ElevatedButton(
-                                onPressed: () {},
+                                onPressed: _isSearching
+                                    ? null
+                                    : () => _onSearchSubmitted(
+                                        _placeTextController.text),
                                 style: ElevatedButton.styleFrom(
                                   elevation: 2,
                                   backgroundColor:
@@ -201,16 +297,30 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                 ),
-                                child: Text(
-                                  'Get Started',
-                                  // 'Start Planning',
-                                  style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.onPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                                child: _isSearching
+                                    ? SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        'Get Started',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
