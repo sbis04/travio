@@ -21,6 +21,12 @@ class _TravioLandingPageState extends State<TravioLandingPage> {
   final _landingScrollController = ScrollController();
 
   @override
+  void dispose() {
+    super.dispose();
+    _landingScrollController.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(

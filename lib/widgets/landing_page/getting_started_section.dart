@@ -37,6 +37,15 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
           curve: Curves.easeInOut,
         );
       }
+      // scroll back up if exactly at the scrolled position
+      else if (widget.landingScrollController.position.pixels ==
+          context.appHeight * 0.25) {
+        widget.landingScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     });
   }
 
@@ -140,7 +149,7 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                                     .colorScheme
                                     .outline
                                     .withAlpha(100),
-                            hintText: 'Where would you like to go?',
+                            hintText: 'Where would you like to go? Or click 👉',
                             hintStyle: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -175,9 +184,7 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                             suffixIcon: Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: ElevatedButton(
-                                onPressed: _placeTextController.text.isEmpty
-                                    ? null
-                                    : () {},
+                                onPressed: () {},
                                 style: ElevatedButton.styleFrom(
                                   elevation: 2,
                                   backgroundColor:
@@ -195,7 +202,8 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                                   ),
                                 ),
                                 child: Text(
-                                  'Start Planning',
+                                  'Get Started',
+                                  // 'Start Planning',
                                   style: TextStyle(
                                     color:
                                         Theme.of(context).colorScheme.onPrimary,
