@@ -29,10 +29,10 @@ class AppHeader extends StatelessWidget {
             // Logo
             Row(
               children: [
-                Icon(
-                  Icons.flight_takeoff,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 28,
+                Image.asset(
+                  'assets/images/travio_logo_small.png',
+                  width: 28,
+                  height: 28,
                 ),
                 const SizedBox(width: 8),
                 Text(
