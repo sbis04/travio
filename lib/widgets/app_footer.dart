@@ -109,7 +109,7 @@ class _FooterDesktop extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '© 2024 Travio. All rights reserved.',
+              '© 2025 Travio. All rights reserved.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -217,7 +217,7 @@ class _FooterTablet extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          '© 2024 Travio. All rights reserved.',
+          '© 2025 Travio. All rights reserved.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context)
                     .colorScheme
@@ -266,7 +266,7 @@ class _FooterMobile extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          '© 2024 Travio. All rights reserved.',
+          '© 2025 Travio. All rights reserved.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context)
                     .colorScheme

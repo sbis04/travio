@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:travio/widgets/app_header.dart';
-import 'package:travio/widgets/hero_section.dart';
 import 'package:travio/widgets/features_section.dart';
 import 'package:travio/widgets/cta_section.dart';
 import 'package:travio/widgets/app_footer.dart';
+import 'package:travio/widgets/getting_started_section.dart';
 
-class LandingPage extends StatelessWidget {
+class TravioLandingPage extends StatelessWidget {
   final VoidCallback onThemeToggle;
 
-  const LandingPage({
+  const TravioLandingPage({
     super.key,
     required this.onThemeToggle,
   });
@@ -21,7 +21,7 @@ class LandingPage extends StatelessWidget {
           child: Column(
             children: [
               AppHeader(onThemeToggle: onThemeToggle),
-              const HeroSection(),
+              const GettingStartedSection(),
               const FeaturesSection(),
               const CTASection(),
               const AppFooter(),

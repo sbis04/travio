@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:travio/utils/responsive.dart';
+import 'package:travio/utils/utils.dart';
 
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key});
+  final VoidCallback onThemeToggle;
+
+  const AppHeader({
+    super.key,
+    required this.onThemeToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: kAppBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -56,6 +62,20 @@ class AppHeader extends StatelessWidget {
                 onPressed: () {},
               ),
               const SizedBox(width: 32),
+              // Theme toggle button
+              IconButton(
+                onPressed: onThemeToggle,
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.light
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                tooltip: Theme.of(context).brightness == Brightness.light
+                    ? 'Switch to dark mode'
+                    : 'Switch to light mode',
+              ),
+              const SizedBox(width: 12),
               OutlinedButton(
                 onPressed: () {},
                 style: OutlinedButton.styleFrom(
@@ -82,6 +102,19 @@ class AppHeader extends StatelessWidget {
                 child: const Text('Get Started'),
               ),
             ] else ...[
+              // Theme toggle button for mobile
+              IconButton(
+                onPressed: onThemeToggle,
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.light
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                tooltip: Theme.of(context).brightness == Brightness.light
+                    ? 'Switch to dark mode'
+                    : 'Switch to light mode',
+              ),
               IconButton(
                 onPressed: () {},
                 icon: Icon(
