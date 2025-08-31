@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:travio/utils/constants.dart';
 
 class Place {
   final String placeId;
@@ -11,6 +10,7 @@ class Place {
   final int? userRatingsTotal;
   final List<String> types;
   final String? photoReference;
+  final List<String> photoUrls; // Store actual photo URLs
   final String? vicinity;
   final String? formattedAddress;
   final String? internationalPhoneNumber;
@@ -27,6 +27,7 @@ class Place {
     this.userRatingsTotal,
     this.types = const [],
     this.photoReference,
+    this.photoUrls = const [],
     this.vicinity,
     this.formattedAddress,
     this.internationalPhoneNumber,
@@ -75,6 +76,8 @@ class Place {
       userRatingsTotal: json['userRatingCount'],
       types: List<String>.from(json['types'] ?? []),
       photoReference: photos?.isNotEmpty == true ? photos!.first['name'] : null,
+      photoUrls: List<String>.from(
+          json['photoUrls'] ?? []), // Store photo URLs from Cloud Function
       vicinity: json['shortFormattedAddress'],
       formattedAddress: json['formattedAddress'],
       internationalPhoneNumber: json['internationalPhoneNumber'],
@@ -130,9 +133,10 @@ class Place {
   String getPhotoUrl({int maxWidth = 400}) {
     if (photoReference == null || photoReference!.isEmpty) return '';
 
-    // For new API, photoReference is the photo name (e.g., "places/ChIJ...")
-    // Use the Place Photo (New) API
-    return 'https://places.googleapis.com/v1/$photoReference/media?maxWidthPx=$maxWidth&key=$kGooglePlacesApiKey';
+    // Note: This method is deprecated when using Cloud Functions
+    // Use PlacesService.getPlacePhotos() instead for secure photo fetching
+    // Returning empty string to prevent direct API calls
+    return '';
   }
 
   String get displayAddress => formattedAddress ?? vicinity ?? address ?? '';

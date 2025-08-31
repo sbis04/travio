@@ -391,10 +391,9 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
   }
 
   Widget _buildPlaceImage(Place place) {
-    // Check if place has a photo reference
-    if (place.photoReference != null && place.photoReference!.isNotEmpty) {
-      final photoUrl = place.getPhotoUrl(maxWidth: 100);
-
+    // Use preloaded photo URLs from search results
+    if (place.photoUrls.isNotEmpty) {
+      final photoUrl = place.photoUrls.first;
       return Container(
         width: 60,
         height: 48,

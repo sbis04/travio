@@ -87,7 +87,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   Future<void> _maybeScrollToCurrentStep({
     double animationDuration = 300.0,
   }) async {
-    logPrint('Current step: $_currentStep');
+    logPrint('🔄 Current step: $_currentStep');
 
     if (_currentStep != _currentScrollStep) {
       final isForward = _currentStep > _currentScrollStep;
