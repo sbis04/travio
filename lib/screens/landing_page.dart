@@ -5,16 +5,16 @@ import 'package:travio/widgets/cta_section.dart';
 import 'package:travio/widgets/app_footer.dart';
 import 'package:travio/widgets/landing_page/getting_started_section.dart';
 
-class TravioLandingPage extends StatefulWidget {
-  const TravioLandingPage({
+class LandingPage extends StatefulWidget {
+  const LandingPage({
     super.key,
   });
 
   @override
-  State<TravioLandingPage> createState() => _TravioLandingPageState();
+  State<LandingPage> createState() => _LandingPageState();
 }
 
-class _TravioLandingPageState extends State<TravioLandingPage> {
+class _LandingPageState extends State<LandingPage> {
   final _landingScrollController = ScrollController();
 
   @override

@@ -5,8 +5,8 @@ import 'package:travio/models/place.dart';
 import 'package:travio/providers/theme_provider.dart';
 import 'package:travio/screens/about_page.dart';
 import 'package:travio/screens/contact_page.dart';
-import 'package:travio/screens/travio_landing_page.dart';
-import 'package:travio/screens/trip_planner_page.dart';
+import 'package:travio/screens/landing_page.dart';
+import 'package:travio/screens/trip_details_page.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -17,22 +17,28 @@ class AppRouter {
       GoRoute(
         path: '/',
         name: 'home',
-        builder: (context, state) => TravioLandingPage(),
+        pageBuilder: (context, state) => _buildPageWithFadeTransition(
+          child: LandingPage(),
+          settings: state,
+        ),
       ),
 
       // Trip planner route with destination parameter
       GoRoute(
-        path: '/plan',
+        path: '/planner',
         name: 'trip-planner',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final placeData = state.extra as Place?;
-          return TripPlannerPage(selectedPlace: placeData);
+          return _buildPageWithFadeTransition(
+            child: TripDetailsPage(selectedPlace: placeData),
+            settings: state,
+          );
         },
       ),
 
       // Trip planner with destination in URL
       // GoRoute(
-      //   path: '/plan/:destination',
+      //   path: '/planner/:destination',
       //   name: 'trip-planner-destination',
       //   builder: (context, state) {
       //     final placeData = state.extra as Place?;
@@ -46,14 +52,20 @@ class AppRouter {
       GoRoute(
         path: '/about',
         name: 'about',
-        builder: (context, state) => const AboutPage(),
+        pageBuilder: (context, state) => _buildPageWithFadeTransition(
+          child: const AboutPage(),
+          settings: state,
+        ),
       ),
 
       // Contact page
       GoRoute(
         path: '/contact',
         name: 'contact',
-        builder: (context, state) => const ContactPage(),
+        pageBuilder: (context, state) => _buildPageWithFadeTransition(
+          child: const ContactPage(),
+          settings: state,
+        ),
       ),
     ],
 
@@ -93,6 +105,25 @@ class AppRouter {
   );
 
   static GoRouter get router => _router;
+
+  // Custom fade transition for all pages
+  static Page<dynamic> _buildPageWithFadeTransition({
+    required Widget child,
+    required GoRouterState settings,
+  }) {
+    return CustomTransitionPage<void>(
+      key: settings.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 200),
+      reverseTransitionDuration: const Duration(milliseconds: 200),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+          child: child,
+        );
+      },
+    );
+  }
 }
 
 // Navigation helper methods
@@ -103,7 +134,7 @@ extension AppNavigation on BuildContext {
     if (selectedPlace != null) {
       goNamed('trip-planner', extra: selectedPlace);
     } else {
-      go('/plan');
+      go('/planner');
     }
   }
 
