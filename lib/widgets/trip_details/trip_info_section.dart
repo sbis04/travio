@@ -166,7 +166,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                                     style:
                                         Theme.of(context).textTheme.bodyMedium,
                                   ),
-                                  // SizedBox(height: 2),
                                   Text(
                                     _currentDateRange?.start != null
                                         ? DateFormat.yMMMd()
