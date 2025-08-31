@@ -128,8 +128,11 @@ class Place {
   }
 
   String getPhotoUrl({int maxWidth = 400}) {
-    if (photoReference == null) return '';
-    return 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=$maxWidth&photoreference=$photoReference&key=$kGooglePlacesApiKey';
+    if (photoReference == null || photoReference!.isEmpty) return '';
+
+    // For new API, photoReference is the photo name (e.g., "places/ChIJ...")
+    // Use the Place Photo (New) API
+    return 'https://places.googleapis.com/v1/$photoReference/media?maxWidthPx=$maxWidth&key=$kGooglePlacesApiKey';
   }
 
   String get displayAddress => formattedAddress ?? vicinity ?? address ?? '';

@@ -1,11 +1,11 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:travio/models/place.dart';
-import 'package:travio/services/places_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/hoverable_image.dart';
+import 'package:travio/widgets/place_search_field.dart';
+import 'package:travio/widgets/landing_page/popular_destinations.dart';
 
 class GettingStartedSection extends StatefulWidget {
   const GettingStartedSection({
@@ -22,16 +22,15 @@ class GettingStartedSection extends StatefulWidget {
 class _GettingStartedSectionState extends State<GettingStartedSection> {
   final TextEditingController _placeTextController = TextEditingController();
   final FocusNode _placeTextFocusNode = FocusNode();
-  Timer? _searchTimer;
-  List<Place> _searchResults = [];
-  List<PlaceSuggestion> _suggestions = [];
-  bool _isSearching = false;
+  Place? _selectedPlace;
+  bool _isLoading = false;
 
-  bool get _hasPlaceFieldFocus => _placeTextFocusNode.hasFocus;
+  // bool get _hasPlaceFieldFocus => _placeTextFocusNode.hasFocus;
 
   @override
   void initState() {
     super.initState();
+
     // Listener to the focus node to update the fill color
     _placeTextFocusNode.addListener(() {
       setState(() {});
@@ -58,86 +57,39 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
 
   @override
   void dispose() {
-    _searchTimer?.cancel();
     _placeTextController.dispose();
     _placeTextFocusNode.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged(String query) {
-    // Cancel previous timer
-    _searchTimer?.cancel();
+  void _onPlaceSelected(Place selectedPlace) {
+    setState(() => _selectedPlace = selectedPlace);
 
-    if (query.isEmpty) {
-      setState(() {
-        _suggestions.clear();
-        _searchResults.clear();
-        _isSearching = false;
-      });
-      return;
+    logPrint('🎯 Place Selected: ${selectedPlace.name}');
+    logPrint('   Address: ${selectedPlace.displayAddress}');
+    logPrint('   Types: ${selectedPlace.types.join(', ')}');
+    if (selectedPlace.hasLocation) {
+      logPrint(
+          '   Location: ${selectedPlace.latitude}, ${selectedPlace.longitude}');
     }
 
-    // Debounce search requests
-    _searchTimer = Timer(const Duration(milliseconds: 500), () {
-      _performSearch(query);
-    });
-  }
-
-  Future<void> _performSearch(String query) async {
-    if (query.isEmpty) return;
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      // Get autocomplete suggestions
-      final suggestions = await PlacesService.getAutocompleteSuggestions(query);
-
-      // Get search results
-      final places = await PlacesService.searchPlaces(query);
-
-      print('🔍 Search Query: "$query"');
-      print('📝 Autocomplete Suggestions (${suggestions.length}):');
-      for (int i = 0; i < suggestions.length && i < 5; i++) {
-        final suggestion = suggestions[i];
-        print(
-            '  ${i + 1}. ${suggestion.mainText} - ${suggestion.secondaryText}');
-      }
-
-      print('📍 Places Found (${places.length}):');
-      for (int i = 0; i < places.length && i < 5; i++) {
-        final place = places[i];
-        print('  ${i + 1}. ${place.name}');
-        print('     Address: ${place.displayAddress}');
-        print('     Rating: ${place.rating ?? 'N/A'}');
-        print('     Types: ${place.types.take(3).join(', ')}');
-        if (place.hasLocation) {
-          print('     Location: ${place.latitude}, ${place.longitude}');
-        }
-        print('');
-      }
-
-      setState(() {
-        _suggestions = suggestions;
-        _searchResults = places;
-        _isSearching = false;
-      });
-    } catch (e) {
-      print('❌ Search Error: $e');
-      setState(() {
-        _isSearching = false;
-        _suggestions.clear();
-        _searchResults.clear();
-      });
-    }
+    // TODO: Navigate to trip planning or add to itinerary
   }
 
   void _onSearchSubmitted(String query) {
     if (query.isNotEmpty) {
-      print('🚀 Search Submitted: "$query"');
-      _performSearch(query);
+      logPrint('🚀 Search Submitted: "$query"');
+      // Handle manual search submission if needed
     }
+  }
+
+  void _onPlaceSelectedFromCarousel(Place selectedPlace) {
+    // Fill the search field with the selected place name
+    _placeTextController.text = selectedPlace.name;
+    // Update the selected place state
+    setState(() => _selectedPlace = selectedPlace);
+    // Unfocus the search field since we have a selection
+    _placeTextFocusNode.unfocus();
   }
 
   @override
@@ -217,113 +169,13 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
                       const SizedBox(height: 40),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 550),
-                        child: TextField(
+                        child: PlaceSearchField(
                           controller: _placeTextController,
                           focusNode: _placeTextFocusNode,
-                          onChanged: _onSearchChanged,
+                          isSearching: _isLoading,
+                          onPlaceSelected: _onPlaceSelected,
                           onSubmitted: _onSearchSubmitted,
-                          textInputAction: TextInputAction.search,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: _placeTextFocusNode.hasFocus
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withAlpha(40)
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .outline
-                                    .withAlpha(100),
-                            hintText: _isSearching
-                                ? 'Searching...'
-                                : 'Where would you like to go? Or click 👉',
-                            hintStyle: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).colorScheme.outline,
-                                width: 2,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).colorScheme.outline,
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 20,
-                            ),
-                            suffixIcon: Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ElevatedButton(
-                                onPressed: _isSearching
-                                    ? null
-                                    : () => _onSearchSubmitted(
-                                        _placeTextController.text),
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 2,
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.primary,
-                                  disabledBackgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withAlpha(100),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                ),
-                                child: _isSearching
-                                    ? SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .onPrimary,
-                                          ),
-                                        ),
-                                      )
-                                    : Text(
-                                        'Get Started',
-                                        style: TextStyle(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
+                          hintText: 'Where would you like to go? ✈️',
                         ),
                       ),
                     ],
@@ -333,17 +185,10 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
             ],
           ),
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 300),
-          alignment: Alignment.topCenter,
-          child: _hasPlaceFieldFocus || _placeTextController.text.isNotEmpty
-              // TODO: Add the top places view here
-              ? Container(
-                  height: 400,
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.primary,
-                )
-              : SizedBox(width: double.infinity),
+        PopularDestinations(
+          scrollController: widget.landingScrollController,
+          onPlaceSelected: _onPlaceSelectedFromCarousel,
+          onLoading: (isLoading) => setState(() => _isLoading = isLoading),
         ),
       ],
     );
