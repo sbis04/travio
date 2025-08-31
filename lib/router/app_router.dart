@@ -23,30 +23,34 @@ class AppRouter {
         ),
       ),
 
-      // Trip planner route with destination parameter
+      // Trip planner route with trip ID
       GoRoute(
-        path: '/planner',
-        name: 'trip-planner',
+        path: '/trip/:tripId',
+        name: 'trip',
         pageBuilder: (context, state) {
-          final placeData = state.extra as Place?;
+          final tripId = state.pathParameters['tripId'] ?? '';
           return _buildPageWithFadeTransition(
-            child: TripDetailsPage(selectedPlace: placeData),
+            child: TripDetailsPage(tripId: tripId),
             settings: state,
           );
         },
       ),
 
-      // Trip planner with destination in URL
-      // GoRoute(
-      //   path: '/planner/:destination',
-      //   name: 'trip-planner-destination',
-      //   builder: (context, state) {
-      //     final placeData = state.extra as Place?;
-      //     return TripPlannerPage(
-      //       selectedPlace: placeData,
-      //     );
-      //   },
-      // ),
+      // Legacy trip planner route (redirect to home if no trip ID)
+      GoRoute(
+        path: '/planner',
+        name: 'trip-planner-legacy',
+        pageBuilder: (context, state) {
+          // Redirect to home since we need a trip ID
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.go('/');
+          });
+          return _buildPageWithFadeTransition(
+            child: const Center(child: CircularProgressIndicator()),
+            settings: state,
+          );
+        },
+      ),
 
       // About page
       GoRoute(
@@ -130,22 +134,16 @@ class AppRouter {
 extension AppNavigation on BuildContext {
   void goHome() => go('/');
 
-  void goToTripPlanner({Place? selectedPlace}) {
-    if (selectedPlace != null) {
-      goNamed('trip-planner', extra: selectedPlace);
-    } else {
-      go('/planner');
-    }
+  void goToTrip(String tripId) {
+    goNamed('trip', pathParameters: {'tripId': tripId});
   }
 
-  void goToDestination(String destination, {Place? placeData}) {
-    goNamed(
-      'trip-planner-destination',
-      pathParameters: {
-        'destination': destination.toLowerCase().replaceAll(' ', '-')
-      },
-      extra: placeData,
-    );
+  void goToTripPlanner({String? tripId}) {
+    if (tripId != null) {
+      goToTrip(tripId);
+    } else {
+      go('/planner'); // Will redirect to home
+    }
   }
 
   void goToAbout() => go('/about');

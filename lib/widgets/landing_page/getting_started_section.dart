@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:travio/models/place.dart';
 import 'package:travio/router/app_router.dart';
+import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/hoverable_image.dart';
 import 'package:travio/widgets/place_search_field.dart';
@@ -24,10 +24,8 @@ class GettingStartedSection extends StatefulWidget {
 class _GettingStartedSectionState extends State<GettingStartedSection> {
   final TextEditingController _placeTextController = TextEditingController();
   final FocusNode _placeTextFocusNode = FocusNode();
-  Place? _selectedPlace;
-  bool _isLoading = false;
 
-  // bool get _hasPlaceFieldFocus => _placeTextFocusNode.hasFocus;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -64,10 +62,9 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
     super.dispose();
   }
 
-  void _onPlaceSelected(Place selectedPlace) {
-    setState(() => _selectedPlace = selectedPlace);
-
+  Future<void> _onPlaceSelected(Place selectedPlace) async {
     logPrint('🎯 Place Selected: ${selectedPlace.name}');
+    logPrint('   Place ID: ${selectedPlace.placeId}');
     logPrint('   Address: ${selectedPlace.displayAddress}');
     logPrint('   Types: ${selectedPlace.types.join(', ')}');
     if (selectedPlace.hasLocation) {
@@ -75,8 +72,25 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
           '   Location: ${selectedPlace.latitude}, ${selectedPlace.longitude}');
     }
 
-    // Navigate to trip planner with selected place
-    context.goToTripPlanner(selectedPlace: selectedPlace);
+    // Show loading state
+    setState(() => _isLoading = true);
+
+    try {
+      // Create trip with anonymous authentication
+      final tripId = await TripService.createTripWithPlace(selectedPlace);
+
+      if (tripId != null) {
+        // Navigate to trip planner with trip ID
+        if (!mounted) return;
+        context.goToTripPlanner(tripId: tripId);
+      } else {
+        logPrint('❌ Failed to create trip');
+      }
+    } catch (e) {
+      logPrint('❌ Error in place selection flow: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _onSearchSubmitted(String query) {
@@ -86,16 +100,13 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
     }
   }
 
-  void _onPlaceSelectedFromCarousel(Place selectedPlace) {
+  void _onPlaceSelectedFromCarousel(Place selectedPlace) async {
     // Fill the search field with the selected place name
     _placeTextController.text = selectedPlace.name;
-    // Update the selected place state
-    setState(() => _selectedPlace = selectedPlace);
     // Unfocus the search field since we have a selection
     _placeTextFocusNode.unfocus();
 
-    // Navigate to trip planner with selected place
-    // context.goToDestination(selectedPlace.name, placeData: selectedPlace);
+    await _onPlaceSelected(selectedPlace);
   }
 
   @override
