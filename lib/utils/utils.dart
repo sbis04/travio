@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 export 'constants.dart';
 export 'responsive.dart';
 
+void logPrint(String message) {
+  if (kDebugMode) {
+    debugPrint(message);
+  }
+}
+
 extension ContextExtension on BuildContext {
   double get appHeight => MediaQuery.sizeOf(this).height;
   double get appWidth => MediaQuery.sizeOf(this).width;
 }
 
-void logPrint(String message) {
-  if (kDebugMode) {
-    debugPrint(message);
-  }
+extension DateTimeExtension on DateTime {
+  DateTime get startOfDay => DateTime(year, month, day);
+
+  DateTime get endOfDay => DateTime(year, month, day, 23, 59);
 }
