@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:travio/models/place.dart';
+import 'package:travio/router/app_router.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/hoverable_image.dart';
 import 'package:travio/widgets/place_search_field.dart';
@@ -73,7 +75,8 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
           '   Location: ${selectedPlace.latitude}, ${selectedPlace.longitude}');
     }
 
-    // TODO: Navigate to trip planning or add to itinerary
+    // Navigate to trip planner with selected place
+    context.goToTripPlanner(selectedPlace: selectedPlace);
   }
 
   void _onSearchSubmitted(String query) {
@@ -90,6 +93,9 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
     setState(() => _selectedPlace = selectedPlace);
     // Unfocus the search field since we have a selection
     _placeTextFocusNode.unfocus();
+
+    // Navigate to trip planner with selected place
+    // context.goToDestination(selectedPlace.name, placeData: selectedPlace);
   }
 
   @override

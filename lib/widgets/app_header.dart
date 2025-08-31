@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:travio/providers/theme_provider.dart';
 import 'package:travio/utils/utils.dart';
 
 class AppHeader extends StatelessWidget {
-  final VoidCallback onThemeToggle;
-
-  const AppHeader({
-    super.key,
-    required this.onThemeToggle,
-  });
+  const AppHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -47,24 +45,39 @@ class AppHeader extends StatelessWidget {
             const Spacer(),
             // Navigation
             if (Responsive.isDesktop(context)) ...[
-              _NavButton(
-                text: 'Features',
-                onPressed: () {},
-              ),
-              const SizedBox(width: 24),
-              _NavButton(
-                text: 'Pricing',
-                onPressed: () {},
-              ),
+              // _NavButton(
+              //   text: 'Features',
+              //   onPressed: () {
+              //     // TODO: Scroll to features section or navigate to features page
+              //   },
+              // ),
+              // const SizedBox(width: 24),
+              // _NavButton(
+              //   text: 'Pricing',
+              //   onPressed: () {
+              //     // TODO: Navigate to pricing page
+              //   },
+              // ),
               const SizedBox(width: 24),
               _NavButton(
                 text: 'About',
-                onPressed: () {},
+                onPressed: () {
+                  print('🔗 About button clicked - navigating to /about');
+                  context.go('/about');
+                },
+              ),
+              const SizedBox(width: 24),
+              _NavButton(
+                text: 'Contact',
+                onPressed: () {
+                  print('🔗 Contact button clicked - navigating to /contact');
+                  context.go('/contact');
+                },
               ),
               const SizedBox(width: 32),
               // Theme toggle button
               IconButton(
-                onPressed: onThemeToggle,
+                onPressed: () => context.read<ThemeProvider>().toggleTheme(),
                 icon: Icon(
                   Theme.of(context).brightness == Brightness.light
                       ? Icons.dark_mode_outlined
@@ -104,7 +117,7 @@ class AppHeader extends StatelessWidget {
             ] else ...[
               // Theme toggle button for mobile
               IconButton(
-                onPressed: onThemeToggle,
+                onPressed: () => context.read<ThemeProvider>().toggleTheme(),
                 icon: Icon(
                   Theme.of(context).brightness == Brightness.light
                       ? Icons.dark_mode_outlined

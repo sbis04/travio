@@ -6,11 +6,8 @@ import 'package:travio/widgets/app_footer.dart';
 import 'package:travio/widgets/landing_page/getting_started_section.dart';
 
 class TravioLandingPage extends StatefulWidget {
-  final VoidCallback onThemeToggle;
-
   const TravioLandingPage({
     super.key,
-    required this.onThemeToggle,
   });
 
   @override
@@ -34,12 +31,12 @@ class _TravioLandingPageState extends State<TravioLandingPage> {
         child: Center(
           child: Column(
             children: [
-              AppHeader(onThemeToggle: widget.onThemeToggle),
+              AppHeader(),
               GettingStartedSection(
                 landingScrollController: _landingScrollController,
               ),
-              const FeaturesSection(),
-              const CTASection(),
+              // const FeaturesSection(),
+              // const CTASection(),
               const AppFooter(),
             ],
           ),
