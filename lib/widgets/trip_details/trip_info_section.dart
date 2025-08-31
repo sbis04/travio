@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:travio/models/trip.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
@@ -47,7 +47,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         _isLoading = false;
         _placeTextController.text = trip?.placeName ?? '';
         _error = trip == null ? 'Trip not found' : null;
-        _currentStep = trip == null ? 1 : 2;
       });
 
       if (trip != null) {
@@ -56,8 +55,10 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         logPrint('❌ Trip not found: ${widget.tripId}');
       }
 
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _maybeScrollToCurrentStep();
+      await Future.delayed(2.seconds, () {
+        if (!mounted) return;
+        setState(() => _currentStep = trip == null ? 1 : 2);
+        _maybeScrollToCurrentStep(animationDuration: 1000.0);
       });
     } catch (e) {
       logPrint('❌ Error loading trip: $e');
@@ -83,7 +84,9 @@ class _TripInfoSectionState extends State<TripInfoSection> {
     super.dispose();
   }
 
-  Future<void> _maybeScrollToCurrentStep() async {
+  Future<void> _maybeScrollToCurrentStep({
+    double animationDuration = 300.0,
+  }) async {
     logPrint('Current step: $_currentStep');
 
     if (_currentStep != _currentScrollStep) {
@@ -108,7 +111,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
       // scroll to the current step
       await _scrollController.animateTo(
         scrollDistance,
-        duration: const Duration(milliseconds: 300),
+        duration: animationDuration.ms,
         curve: Curves.easeInOut,
       );
     }
@@ -157,6 +160,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                   controller: _placeTextController,
                   focusNode: _placeTextFocusNode,
                   isSearching: false,
+                  trip: _trip,
                   onPlaceSelected: (selectedPlace) {},
                   onSubmitted: (query) {},
                 ),
@@ -379,7 +383,7 @@ class TripInfoSectionView extends StatelessWidget {
                                 ),
                       ),
                       const SizedBox(height: 24),
-                      child,
+                      Flexible(child: child),
                     ],
                   ),
                 ),
