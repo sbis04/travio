@@ -15,6 +15,7 @@ class SelectDestinationView extends StatefulWidget {
     required this.onPlaceSelected,
     required this.onSubmitted,
     required this.isSearching,
+    required this.onPhotosLoaded,
     this.trip,
   });
 
@@ -23,6 +24,7 @@ class SelectDestinationView extends StatefulWidget {
   final Function(Place) onPlaceSelected;
   final Function(String) onSubmitted;
   final bool isSearching;
+  final VoidCallback onPhotosLoaded;
   final Trip? trip;
 
   @override
@@ -51,7 +53,10 @@ class _SelectDestinationViewState extends State<SelectDestinationView> {
         // Place photos section
         if (widget.trip != null) ...[
           const SizedBox(height: 32),
-          StaggeredPlacePhotosGrid(placeId: widget.trip!.placeId),
+          StaggeredPlacePhotosGrid(
+            placeId: widget.trip!.placeId,
+            onPhotosLoaded: widget.onPhotosLoaded,
+          ),
         ],
       ],
     );
@@ -62,9 +67,11 @@ class StaggeredPlacePhotosGrid extends StatefulWidget {
   const StaggeredPlacePhotosGrid({
     super.key,
     required this.placeId,
+    required this.onPhotosLoaded,
   });
 
   final String placeId;
+  final VoidCallback onPhotosLoaded;
 
   @override
   State<StaggeredPlacePhotosGrid> createState() =>
@@ -87,6 +94,8 @@ class _StaggeredPlacePhotosGridState extends State<StaggeredPlacePhotosGrid> {
       }
     } catch (e) {
       logPrint('❌ Error loading place photos: $e');
+    } finally {
+      widget.onPhotosLoaded();
     }
   }
 

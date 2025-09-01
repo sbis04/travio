@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:travio/models/trip.dart';
@@ -10,6 +11,8 @@ import 'package:travio/widgets/trip_details/trip_info_views/trip_info_views.dart
 
 const _sectionTitleHeight = 50.0;
 const _titleGap = 16.0 * 2;
+
+typedef CurrentDateRange = ({DateTime? start, DateTime? end});
 
 class TripInfoSection extends StatefulWidget {
   const TripInfoSection({
@@ -47,6 +50,10 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         _isLoading = false;
         _placeTextController.text = trip?.placeName ?? '';
         _error = trip == null ? 'Trip not found' : null;
+        _currentDateRange = (
+          start: trip?.startDate,
+          end: trip?.endDate,
+        );
       });
 
       if (trip != null) {
@@ -54,12 +61,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
       } else {
         logPrint('❌ Trip not found: ${widget.tripId}');
       }
-
-      await Future.delayed(2.seconds, () {
-        if (!mounted) return;
-        setState(() => _currentStep = trip == null ? 1 : 2);
-        _maybeScrollToCurrentStep(animationDuration: 1000.0);
-      });
     } catch (e) {
       logPrint('❌ Error loading trip: $e');
       if (!mounted) return;
@@ -68,20 +69,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         _error = 'Error loading trip: $e';
       });
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _loadTripData();
-  }
-
-  @override
-  void dispose() {
-    _placeTextController.dispose();
-    _placeTextFocusNode.dispose();
-    super.dispose();
   }
 
   Future<void> _maybeScrollToCurrentStep({
@@ -117,6 +104,39 @@ class _TripInfoSectionState extends State<TripInfoSection> {
     }
   }
 
+  Future<void> _onDateRangeChanged(CurrentDateRange? dateRange) async {
+    setState(() => _currentDateRange = dateRange);
+
+    EasyDebounce.debounce(
+      'update-trip-dates',
+      300.ms,
+      () async {
+        // Save dates to Firestore
+        if (_trip != null && dateRange != null) {
+          try {
+            logPrint('📅 Updating trip dates...');
+            logPrint('   Start: ${dateRange.start}');
+            logPrint('   End: ${dateRange.end}');
+
+            final success = await TripService.updateTripDates(
+              tripId: _trip!.id,
+              startDate: dateRange.start,
+              endDate: dateRange.end,
+            );
+
+            if (success) {
+              logPrint('✅ Trip dates saved to Firestore');
+            } else {
+              logPrint('❌ Failed to save trip dates');
+            }
+          } catch (e) {
+            logPrint('❌ Error saving trip dates: $e');
+          }
+        }
+      },
+    );
+  }
+
   // void _onPlaceSelected(Place selectedPlace) {
   //   setState(() => _selectedPlace = selectedPlace);
 
@@ -138,6 +158,19 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   //     // Handle manual search submission if needed
   //   }
   // }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTripData();
+  }
+
+  @override
+  void dispose() {
+    _placeTextController.dispose();
+    _placeTextFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +196,13 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                   trip: _trip,
                   onPlaceSelected: (selectedPlace) {},
                   onSubmitted: (query) {},
+                  onPhotosLoaded: () {
+                    Future.delayed(2.seconds, () {
+                      if (!mounted) return;
+                      setState(() => _currentStep = _trip == null ? 1 : 2);
+                      _maybeScrollToCurrentStep(animationDuration: 1000.0);
+                    });
+                  },
                 ),
               ),
               TripInfoSectionView(
@@ -173,8 +213,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                     'Select the dates of your trip. Don\'t worry, you can modify it anytime.',
                 child: DurationSelectorView(
                   currentDateRange: _currentDateRange,
-                  onDateRangeChanged: (dateRange) =>
-                      setState(() => _currentDateRange = dateRange),
+                  onDateRangeChanged: _onDateRangeChanged,
                 ),
                 onStepTap: () {
                   setState(() => _currentStep = 2);

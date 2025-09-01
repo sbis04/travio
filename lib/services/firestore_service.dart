@@ -77,13 +77,41 @@ class FirestoreService {
     try {
       await _firestore.collection(_tripsCollection).doc(tripId).update({
         ...updates,
-        'updatedAt': Timestamp.now(),
+        'updated_at': Timestamp.now(),
       });
 
       logPrint('✅ Trip updated successfully: $tripId');
       return true;
     } catch (e) {
       logPrint('❌ Error updating trip: $e');
+      return false;
+    }
+  }
+
+  // Update trip dates specifically
+  static Future<bool> updateTripDates({
+    required String tripId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': Timestamp.now(),
+        'trip_duration': {
+          'start_date':
+              startDate != null ? Timestamp.fromDate(startDate) : null,
+          'end_date': endDate != null ? Timestamp.fromDate(endDate) : null,
+        },
+      };
+
+      await _firestore.collection(_tripsCollection).doc(tripId).update(updates);
+
+      logPrint('✅ Trip dates updated successfully: $tripId');
+      logPrint('   Start: ${startDate?.toString() ?? 'null'}');
+      logPrint('   End: ${endDate?.toString() ?? 'null'}');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error updating trip dates: $e');
       return false;
     }
   }

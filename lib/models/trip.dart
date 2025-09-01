@@ -11,6 +11,8 @@ class Trip {
   final double? longitude;
   final double? rating;
   final List<String> placeTypes;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   final TripStatus status;
@@ -25,6 +27,8 @@ class Trip {
     this.longitude,
     this.rating,
     this.placeTypes = const [],
+    this.startDate,
+    this.endDate,
     required this.createdAt,
     required this.updatedAt,
     this.status = TripStatus.planning,
@@ -53,38 +57,48 @@ class Trip {
     );
   }
 
-  // Convert to Firestore document
+  // Convert to Firestore document (using snake_case)
   Map<String, dynamic> toFirestore() {
     return {
-      'userUid': userUid,
-      'placeId': placeId,
-      'placeName': placeName,
-      'placeAddress': placeAddress,
+      'user_uid': userUid,
+      'place_id': placeId,
+      'place_name': placeName,
+      'place_address': placeAddress,
       'latitude': latitude,
       'longitude': longitude,
       'rating': rating,
-      'placeTypes': placeTypes,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'place_types': placeTypes,
+      'trip_duration': {
+        'start_date': startDate != null ? Timestamp.fromDate(startDate!) : null,
+        'end_date': endDate != null ? Timestamp.fromDate(endDate!) : null,
+      },
+      'created_at': Timestamp.fromDate(createdAt),
+      'updated_at': Timestamp.fromDate(updatedAt),
       'status': status.name,
     };
   }
 
-  // Create from Firestore document
+  // Create from Firestore document (using snake_case)
   factory Trip.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Trip(
       id: doc.id,
-      userUid: data['userUid'] ?? '',
-      placeId: data['placeId'] ?? '',
-      placeName: data['placeName'] ?? '',
-      placeAddress: data['placeAddress'],
+      userUid: data['user_uid'] ?? '',
+      placeId: data['place_id'] ?? '',
+      placeName: data['place_name'] ?? '',
+      placeAddress: data['place_address'],
       latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
       rating: data['rating']?.toDouble(),
-      placeTypes: List<String>.from(data['placeTypes'] ?? []),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      placeTypes: List<String>.from(data['place_types'] ?? []),
+      startDate: data['trip_duration']?['start_date'] != null
+          ? (data['trip_duration']['start_date'] as Timestamp).toDate()
+          : null,
+      endDate: data['trip_duration']?['end_date'] != null
+          ? (data['trip_duration']['end_date'] as Timestamp).toDate()
+          : null,
+      createdAt: (data['created_at'] as Timestamp).toDate(),
+      updatedAt: (data['updated_at'] as Timestamp).toDate(),
       status: TripStatus.values.firstWhere(
         (status) => status.name == data['status'],
         orElse: () => TripStatus.planning,
@@ -102,6 +116,8 @@ class Trip {
     double? longitude,
     double? rating,
     List<String>? placeTypes,
+    DateTime? startDate,
+    DateTime? endDate,
     DateTime? updatedAt,
     TripStatus? status,
   }) {
@@ -115,6 +131,8 @@ class Trip {
       longitude: longitude ?? this.longitude,
       rating: rating ?? this.rating,
       placeTypes: placeTypes ?? this.placeTypes,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       status: status ?? this.status,

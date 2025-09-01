@@ -70,6 +70,18 @@ class TripService {
     );
   }
 
+  // Update trip dates
+  static Future<bool> updateTripDates({
+    required String tripId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) =>
+      FirestoreService.updateTripDates(
+        tripId: tripId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
   // Delete trip
   static Future<bool> deleteTrip(String tripId) async {
     return await FirestoreService.deleteTrip(tripId);
