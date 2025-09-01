@@ -106,4 +106,73 @@ class TripService {
 
     return FirestoreService.watchUserTrips(userUid);
   }
+
+  // ========== VISIT PLACES MANAGEMENT ==========
+
+  // Add a place to visit to the trip
+  static Future<bool> addVisitPlace({
+    required String tripId,
+    required Place place,
+  }) async {
+    return await FirestoreService.addVisitPlace(
+      tripId: tripId,
+      place: place,
+    );
+  }
+
+  // Remove a place to visit from the trip
+  static Future<bool> removeVisitPlace({
+    required String tripId,
+    required String placeId,
+  }) async {
+    return await FirestoreService.removeVisitPlace(
+      tripId: tripId,
+      placeId: placeId,
+    );
+  }
+
+  // Get all visit places for a trip
+  static Future<List<Place>> getVisitPlaces(String tripId) async {
+    return await FirestoreService.getVisitPlaces(tripId);
+  }
+
+  // Check if a place is already in visit places
+  static Future<bool> isVisitPlace({
+    required String tripId,
+    required String placeId,
+  }) async {
+    return await FirestoreService.isVisitPlace(
+      tripId: tripId,
+      placeId: placeId,
+    );
+  }
+
+  // Listen to visit places (real-time)
+  static Stream<List<Place>> watchVisitPlaces(String tripId) {
+    return FirestoreService.watchVisitPlaces(tripId);
+  }
+
+  // Batch update visit places (optimized for UI state changes)
+  static Future<bool> updateVisitPlaces({
+    required String tripId,
+    required List<Place> places,
+  }) async {
+    return await FirestoreService.updateVisitPlaces(
+      tripId: tripId,
+      places: places,
+    );
+  }
+
+  // Handle individual place selection/deselection efficiently
+  static Future<bool> toggleVisitPlace({
+    required String tripId,
+    required Place place,
+    required bool isSelected,
+  }) async {
+    if (isSelected) {
+      return await addVisitPlace(tripId: tripId, place: place);
+    } else {
+      return await removeVisitPlace(tripId: tripId, placeId: place.placeId);
+    }
+  }
 }

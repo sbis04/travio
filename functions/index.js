@@ -306,3 +306,107 @@ exports.getAutocompleteSuggestions = onCall(async (request) => {
         throw new Error(`Get autocomplete suggestions failed: ${error.message}`);
     }
 });
+
+/**
+ * Get popular places/attractions for a specific location
+ */
+exports.getPopularPlaces = onCall(async (request) => {
+    try {
+        const { placeId, maxResults = 20 } = request.data;
+
+        if (!placeId) {
+            throw new Error("Place ID is required");
+        }
+
+        logger.info(`🏛️ Getting popular places for: ${placeId}`);
+
+        // First, get the location of the main place
+        const placeResponse = await fetch(`${PLACES_BASE_URL}/places/${placeId}`, {
+            headers: {
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "location,displayName",
+            },
+        });
+
+        if (!placeResponse.ok) {
+            throw new Error(`Place location request failed: ${placeResponse.status}`);
+        }
+
+        const placeData = await placeResponse.json();
+        const location = placeData.location;
+        const placeName = placeData.displayName && placeData.displayName.text ? placeData.displayName.text : "Unknown";
+
+        if (!location) {
+            throw new Error("Place location not found");
+        }
+
+        logger.info(`📍 Searching popular places near: ${placeName}`);
+
+        // Search for popular places nearby using the same format as getPlacePhotos
+        const nearbyResponse = await fetch(`${PLACES_BASE_URL}/places:searchNearby`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos",
+            },
+            body: JSON.stringify({
+                locationRestriction: {
+                    circle: {
+                        center: {
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                        },
+                        radius: 30000.0, // 30km radius
+                    },
+                },
+                includedTypes: ["tourist_attraction", "park", "zoo", "restaurant"],
+                excludedTypes: ["hotel"],
+                maxResultCount: maxResults,
+            }),
+        });
+
+        if (!nearbyResponse.ok) {
+            throw new Error(`Nearby search failed: ${nearbyResponse.status}`);
+        }
+
+        const nearbyData = await nearbyResponse.json();
+        const places = nearbyData.places || [];
+
+        // Transform places to match our Place model format and get photo URLs
+        const popularPlaces = [];
+        for (const place of places) {
+            const photos = place.photos || [];
+            const photoUrls = [];
+
+            // Get photo URLs for the first few photos
+            for (let i = 0; i < Math.min(photos.length, 3); i++) {
+                const photoName = photos[i].name;
+                const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`;
+                photoUrls.push(photoUrl);
+            }
+
+            const transformedPlace = {
+                id: place.id,
+                placeId: place.id,
+                displayName: place.displayName,
+                formattedAddress: place.formattedAddress,
+                location: place.location,
+                rating: place.rating,
+                userRatingCount: place.userRatingCount,
+                types: place.types || [],
+                photos: place.photos || [],
+                photoUrls: photoUrls,
+            };
+
+            popularPlaces.push(transformedPlace);
+        }
+
+        logger.info(`✅ Found ${popularPlaces.length} popular places`);
+
+        return { places: popularPlaces };
+    } catch (error) {
+        logger.error("❌ Error in getPopularPlaces:", error);
+        throw new Error(`Get popular places failed: ${error.message}`);
+    }
+});

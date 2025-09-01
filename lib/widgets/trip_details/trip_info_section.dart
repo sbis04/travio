@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:travio/models/trip.dart';
+import 'package:travio/models/place.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/page_loading_indicator.dart';
@@ -33,6 +34,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   int _currentStep = 1;
   int _currentScrollStep = 1;
   CurrentDateRange? _currentDateRange;
+  List<Place> _selectedVisitPlaces = []; // Store selected places to visit
 
   Trip? _trip;
   bool _isLoading = true;
@@ -59,6 +61,8 @@ class _TripInfoSectionState extends State<TripInfoSection> {
 
       if (trip != null) {
         logPrint('✅ Trip loaded successfully: ${trip.placeName}');
+        // Load existing visit places after trip data is loaded
+        _loadExistingVisitPlaces();
       } else {
         logPrint('❌ Trip not found: ${widget.tripId}');
         AppSonnar.of(context).show(
@@ -149,6 +153,61 @@ class _TripInfoSectionState extends State<TripInfoSection> {
     );
   }
 
+  void _onSelectedPlacesChanged(List<Place> selectedPlaces) {
+    setState(() => _selectedVisitPlaces = selectedPlaces);
+
+    logPrint('🏛️ Selected ${selectedPlaces.length} places to visit:');
+    for (final place in selectedPlaces) {
+      logPrint('   - ${place.name}');
+    }
+
+    // Save selected places to Firestore using batch update for efficiency
+    _saveSelectedPlacesToFirestore(selectedPlaces);
+  }
+
+  Future<void> _saveSelectedPlacesToFirestore(
+      List<Place> selectedPlaces) async {
+    if (_trip == null) return;
+
+    try {
+      logPrint(
+          '💾 Saving ${selectedPlaces.length} selected places to Firestore...');
+
+      // Use batch update for better performance
+      final success = await TripService.updateVisitPlaces(
+        tripId: _trip!.id,
+        places: selectedPlaces,
+      );
+
+      if (success) {
+        logPrint('✅ Visit places saved successfully');
+      } else {
+        logPrint('❌ Failed to save visit places');
+        // Could show user notification here if needed
+      }
+    } catch (e) {
+      logPrint('❌ Error saving visit places: $e');
+      // Could show user error notification here if needed
+    }
+  }
+
+  Future<void> _loadExistingVisitPlaces() async {
+    if (_trip == null) return;
+
+    try {
+      logPrint('📍 Loading existing visit places for trip: ${_trip!.id}');
+
+      final existingPlaces = await TripService.getVisitPlaces(_trip!.id);
+
+      if (mounted) {
+        setState(() => _selectedVisitPlaces = existingPlaces);
+        logPrint('✅ Loaded ${existingPlaces.length} existing visit places');
+      }
+    } catch (e) {
+      logPrint('❌ Error loading existing visit places: $e');
+    }
+  }
+
   // void _onPlaceSelected(Place selectedPlace) {
   //   setState(() => _selectedPlace = selectedPlace);
 
@@ -228,7 +287,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 isCurrentStep: _currentStep == 2,
                 title: 'Duration of the trip',
                 subtitle:
-                    'Select the dates of your trip. Don\'t worry, you can modify it anytime.',
+                    'Select the dates of your ${_trip?.placeName} trip. Don\'t worry, you can modify it anytime.',
                 child: DurationSelectorView(
                   currentDateRange: _currentDateRange,
                   onDateRangeChanged: _onDateRangeChanged,
@@ -246,8 +305,17 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 step: 3,
                 isCurrentStep: _currentStep == 3,
                 title: 'Choose places to visit',
-                subtitle: 'Select the places you want to visit.',
-                child: SizedBox(),
+                subtitle:
+                    'Here are some of the most popular places in ${_trip?.placeName}. '
+                    'Start by selecting the places that you might want to visit. You '
+                    'can search for more places once the initial creation is complete.',
+                child: _trip?.placeId != null
+                    ? VisitPlacesSelectorView(
+                        selectedPlaceId: _trip!.placeId,
+                        initialSelectedPlaces: _selectedVisitPlaces,
+                        onSelectedPlacesChanged: _onSelectedPlacesChanged,
+                      )
+                    : const SizedBox(),
                 onStepTap: () {
                   setState(() => _currentStep = 3);
                   _maybeScrollToCurrentStep();

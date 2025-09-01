@@ -105,6 +105,34 @@ class PlacesService {
     }
   }
 
+  // Get popular places for a destination using Firebase Cloud Function
+  static Future<List<Place>> getPopularPlaces({
+    required String placeId,
+    int maxResults = 20,
+  }) async {
+    try {
+      logPrint('🏛️ Getting popular places via Cloud Function: $placeId');
+
+      final HttpsCallable callable =
+          _functions.httpsCallable('getPopularPlaces');
+      final result = await callable.call({
+        'placeId': placeId,
+        'maxResults': maxResults,
+      });
+
+      final List places = result.data['places'] ?? [];
+      final popularPlaces =
+          places.map((json) => Place.fromJsonNew(json)).toList();
+
+      logPrint(
+          '✅ Cloud Function returned ${popularPlaces.length} popular places');
+      return popularPlaces;
+    } catch (e) {
+      logPrint('❌ Error in getPopularPlaces Cloud Function: $e');
+      throw Exception('Error getting popular places: $e');
+    }
+  }
+
   // Legacy methods for backward compatibility (now use Cloud Functions)
   static Future<List<Place>> searchPlaces(String query) async {
     return searchDestinations(query);

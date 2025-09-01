@@ -6,6 +6,7 @@ import 'package:travio/utils/utils.dart';
 class FirestoreService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _tripsCollection = 'trips';
+  static const String _visitPlacesSubcollection = 'visit_places';
 
   // Create a new trip document
   static Future<String?> createTrip({
@@ -161,6 +162,197 @@ class FirestoreService {
     } catch (e) {
       logPrint('❌ Error getting trip stats: $e');
       return {'total': 0, 'planning': 0, 'active': 0, 'completed': 0};
+    }
+  }
+
+  // ========== VISIT PLACES SUBCOLLECTION METHODS ==========
+
+  // Add a place to visit to the trip
+  static Future<bool> addVisitPlace({
+    required String tripId,
+    required Place place,
+  }) async {
+    try {
+      logPrint('💾 Adding visit place: ${place.name} to trip $tripId');
+
+      // Convert Place to Map for Firestore storage
+      final placeData = {
+        'place_id': place.placeId,
+        'name': place.name,
+        'formatted_address': place.formattedAddress ?? place.address,
+        'latitude': place.latitude,
+        'longitude': place.longitude,
+        'rating': place.rating,
+        'user_ratings_total': place.userRatingsTotal,
+        'types': place.types,
+        'photo_urls': place.photoUrls,
+        'added_at': Timestamp.now(),
+      };
+
+      // Use place_id as document ID to avoid duplicates
+      await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_visitPlacesSubcollection)
+          .doc(place.placeId)
+          .set(placeData);
+
+      logPrint('✅ Visit place added successfully: ${place.name}');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error adding visit place: $e');
+      return false;
+    }
+  }
+
+  // Remove a place to visit from the trip
+  static Future<bool> removeVisitPlace({
+    required String tripId,
+    required String placeId,
+  }) async {
+    try {
+      logPrint('🗑️ Removing visit place: $placeId from trip $tripId');
+
+      await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_visitPlacesSubcollection)
+          .doc(placeId)
+          .delete();
+
+      logPrint('✅ Visit place removed successfully: $placeId');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error removing visit place: $e');
+      return false;
+    }
+  }
+
+  // Get all visit places for a trip
+  static Future<List<Place>> getVisitPlaces(String tripId) async {
+    try {
+      logPrint('📍 Getting visit places for trip: $tripId');
+
+      final querySnapshot = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_visitPlacesSubcollection)
+          .orderBy('added_at', descending: false)
+          .get();
+
+      final places = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return Place(
+          placeId: data['place_id'] ?? doc.id,
+          name: data['name'] ?? '',
+          formattedAddress: data['formatted_address'],
+          latitude: data['latitude']?.toDouble(),
+          longitude: data['longitude']?.toDouble(),
+          rating: data['rating']?.toDouble(),
+          userRatingsTotal: data['user_ratings_total']?.toInt(),
+          types: List<String>.from(data['types'] ?? []),
+          photoUrls: List<String>.from(data['photo_urls'] ?? []),
+        );
+      }).toList();
+
+      logPrint('✅ Found ${places.length} visit places for trip $tripId');
+      return places;
+    } catch (e) {
+      logPrint('❌ Error getting visit places: $e');
+      return [];
+    }
+  }
+
+  // Check if a place is already in visit places
+  static Future<bool> isVisitPlace({
+    required String tripId,
+    required String placeId,
+  }) async {
+    try {
+      final doc = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_visitPlacesSubcollection)
+          .doc(placeId)
+          .get();
+
+      return doc.exists;
+    } catch (e) {
+      logPrint('❌ Error checking visit place: $e');
+      return false;
+    }
+  }
+
+  // Listen to visit places (real-time)
+  static Stream<List<Place>> watchVisitPlaces(String tripId) {
+    return _firestore
+        .collection(_tripsCollection)
+        .doc(tripId)
+        .collection(_visitPlacesSubcollection)
+        .orderBy('added_at', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              return Place(
+                placeId: data['place_id'] ?? doc.id,
+                name: data['name'] ?? '',
+                formattedAddress: data['formatted_address'],
+                latitude: data['latitude']?.toDouble(),
+                longitude: data['longitude']?.toDouble(),
+                rating: data['rating']?.toDouble(),
+                userRatingsTotal: data['user_ratings_total']?.toInt(),
+                types: List<String>.from(data['types'] ?? []),
+                photoUrls: List<String>.from(data['photo_urls'] ?? []),
+              );
+            }).toList());
+  }
+
+  // Batch update visit places (replace all)
+  static Future<bool> updateVisitPlaces({
+    required String tripId,
+    required List<Place> places,
+  }) async {
+    try {
+      logPrint('🔄 Batch updating visit places for trip: $tripId');
+
+      final batch = _firestore.batch();
+      final visitPlacesRef = _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_visitPlacesSubcollection);
+
+      // First, get all existing visit places to delete them
+      final existingPlaces = await visitPlacesRef.get();
+      for (final doc in existingPlaces.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Then, add all new places
+      for (final place in places) {
+        final placeData = {
+          'place_id': place.placeId,
+          'name': place.name,
+          'formatted_address': place.formattedAddress ?? place.address,
+          'latitude': place.latitude,
+          'longitude': place.longitude,
+          'rating': place.rating,
+          'user_ratings_total': place.userRatingsTotal,
+          'types': place.types,
+          'photo_urls': place.photoUrls,
+          'added_at': Timestamp.now(),
+        };
+
+        batch.set(visitPlacesRef.doc(place.placeId), placeData);
+      }
+
+      await batch.commit();
+
+      logPrint(
+          '✅ Batch updated ${places.length} visit places for trip $tripId');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error batch updating visit places: $e');
+      return false;
     }
   }
 }
