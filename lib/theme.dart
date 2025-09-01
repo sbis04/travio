@@ -201,6 +201,5 @@ ThemeData get darkTheme => ThemeData(
         elevation: 0,
       ),
       fontFamily: 'Quicksand',
-      fontFamilyFallback: const ['NotoEmoji'],
       textTheme: _createTextTheme(),
     );
