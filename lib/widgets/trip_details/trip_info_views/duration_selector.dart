@@ -10,10 +10,12 @@ class DurationSelectorView extends StatelessWidget {
     super.key,
     required this.currentDateRange,
     required this.onDateRangeChanged,
+    // required this.onContinuePressed,
   });
 
   final CurrentDateRange? currentDateRange;
   final Function(CurrentDateRange) onDateRangeChanged;
+  // final VoidCallback onContinuePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +28,7 @@ class DurationSelectorView extends StatelessWidget {
             decoration: BoxDecoration(
               color:
                   Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 width: 2,
                 color: Theme.of(context).colorScheme.outline,
@@ -170,6 +172,36 @@ class DurationSelectorView extends StatelessWidget {
               ),
             ),
           ),
+          // if (currentDateRange?.start != null &&
+          //     currentDateRange?.end != null) ...[
+          //   const SizedBox(height: 24),
+          //   SizedBox(
+          //     width: double.infinity,
+          //     child: ElevatedButton(
+          //       onPressed: onContinuePressed,
+          //       style: ElevatedButton.styleFrom(
+          //         elevation: 5,
+          //         backgroundColor: Theme.of(context).colorScheme.primary,
+          //         disabledBackgroundColor:
+          //             Theme.of(context).colorScheme.primary.withAlpha(100),
+          //         padding: const EdgeInsets.symmetric(
+          //           horizontal: 24,
+          //           vertical: 20,
+          //         ),
+          //         shape: RoundedRectangleBorder(
+          //           borderRadius: BorderRadius.circular(20),
+          //         ),
+          //       ),
+          //       child: Text(
+          //         'Continue',
+          //         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          //               color: Colors.white,
+          //               fontWeight: FontWeight.w600,
+          //             ),
+          //       ),
+          //     ),
+          //   ),
+          // ],
         ],
       ),
     );

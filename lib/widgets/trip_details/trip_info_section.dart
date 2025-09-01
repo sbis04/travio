@@ -34,7 +34,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   int _currentStep = 1;
   int _currentScrollStep = 1;
   CurrentDateRange? _currentDateRange;
-  List<Place> _selectedVisitPlaces = []; // Store selected places to visit
+  List<Place> _selectedVisitPlaces = [];
 
   Trip? _trip;
   bool _isLoading = true;
@@ -208,6 +208,22 @@ class _TripInfoSectionState extends State<TripInfoSection> {
     }
   }
 
+  Future<void> _initialScroll() async {
+    await Future.delayed(2.seconds, () {
+      if (!mounted) return;
+      setState(
+        () => _currentStep = _trip == null
+            ? 1
+            : _selectedVisitPlaces.length > 1
+                ? 4
+                : _isDateRangeSet
+                    ? 3
+                    : 2,
+      );
+      _maybeScrollToCurrentStep(animationDuration: 1000.0);
+    });
+  }
+
   // void _onPlaceSelected(Place selectedPlace) {
   //   setState(() => _selectedPlace = selectedPlace);
 
@@ -267,19 +283,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                   trip: _trip,
                   onPlaceSelected: (selectedPlace) {},
                   onSubmitted: (query) {},
-                  onPhotosLoaded: () {
-                    Future.delayed(2.seconds, () {
-                      if (!mounted) return;
-                      setState(
-                        () => _currentStep = _trip == null
-                            ? 1
-                            : _isDateRangeSet
-                                ? 3
-                                : 2,
-                      );
-                      _maybeScrollToCurrentStep(animationDuration: 1000.0);
-                    });
-                  },
+                  onPhotosLoaded: _initialScroll,
                 ),
               ),
               TripInfoSectionView(
@@ -291,6 +295,10 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 child: DurationSelectorView(
                   currentDateRange: _currentDateRange,
                   onDateRangeChanged: _onDateRangeChanged,
+                  // onContinuePressed: () {
+                  //   setState(() => _currentStep = 3);
+                  //   _maybeScrollToCurrentStep();
+                  // },
                 ),
                 onStepTap: () {
                   setState(() => _currentStep = 2);
@@ -308,7 +316,8 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 subtitle:
                     'Here are some of the most popular places in ${_trip?.placeName}. '
                     'Start by selecting the places that you might want to visit. You '
-                    'can search for more places once the initial creation is complete.',
+                    'can search for more places once the initial creation is complete.\n\n'
+                    'When you\'re done, just click on the next step.',
                 child: _trip?.placeId != null
                     ? VisitPlacesSelectorView(
                         selectedPlaceId: _trip!.placeId,
