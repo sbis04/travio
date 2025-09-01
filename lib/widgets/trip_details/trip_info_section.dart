@@ -12,8 +12,6 @@ import 'package:travio/widgets/trip_details/trip_info_views/trip_info_views.dart
 const _sectionTitleHeight = 50.0;
 const _titleGap = 16.0 * 2;
 
-typedef CurrentDateRange = ({DateTime? start, DateTime? end});
-
 class TripInfoSection extends StatefulWidget {
   const TripInfoSection({
     super.key,
@@ -37,6 +35,9 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   Trip? _trip;
   bool _isLoading = true;
   String? _error;
+
+  bool get _isDateRangeSet =>
+      _currentDateRange?.start != null && _currentDateRange?.end != null;
 
   Future<void> _loadTripData() async {
     try {
@@ -91,7 +92,7 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                     kAppBarHeight -
                     _sectionTitleHeight -
                     _titleGap)) *
-            (isForward ? _currentScrollStep : _currentStep - 1);
+            (isForward ? _currentStep - 1 : _currentStep - 1);
       }
 
       _currentScrollStep = _currentStep;
@@ -131,6 +132,12 @@ class _TripInfoSectionState extends State<TripInfoSection> {
             }
           } catch (e) {
             logPrint('❌ Error saving trip dates: $e');
+          }
+
+          // scroll to next step if both dates are set
+          if (dateRange.start != null && dateRange.end != null) {
+            setState(() => _currentStep = 3);
+            _maybeScrollToCurrentStep(animationDuration: 1000.0);
           }
         }
       },
@@ -199,7 +206,13 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                   onPhotosLoaded: () {
                     Future.delayed(2.seconds, () {
                       if (!mounted) return;
-                      setState(() => _currentStep = _trip == null ? 1 : 2);
+                      setState(
+                        () => _currentStep = _trip == null
+                            ? 1
+                            : _isDateRangeSet
+                                ? 3
+                                : 2,
+                      );
                       _maybeScrollToCurrentStep(animationDuration: 1000.0);
                     });
                   },
