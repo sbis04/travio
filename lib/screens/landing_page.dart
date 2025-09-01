@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:travio/widgets/app_header.dart';
-import 'package:travio/widgets/features_section.dart';
-import 'package:travio/widgets/cta_section.dart';
 import 'package:travio/widgets/app_footer.dart';
 import 'package:travio/widgets/landing_page/getting_started_section.dart';
 

@@ -6,6 +6,7 @@ import 'package:travio/firebase_options.dart';
 import 'package:travio/providers/theme_provider.dart';
 import 'package:travio/router/app_router.dart';
 import 'package:travio/theme.dart';
+import 'package:travio/widgets/sonnar.dart';
 
 void main() async {
   usePathUrlStrategy();
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
           darkTheme: darkTheme,
           themeMode: themeProvider.themeMode,
           routerConfig: AppRouter.router,
+          builder: (_, child) => AppSonnar(child: child!),
         );
       },
     );

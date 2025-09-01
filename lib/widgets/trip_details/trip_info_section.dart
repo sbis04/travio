@@ -3,10 +3,12 @@ import 'dart:math';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:travio/models/trip.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/page_loading_indicator.dart';
+import 'package:travio/widgets/sonnar.dart';
 import 'package:travio/widgets/trip_details/trip_info_views/trip_info_views.dart';
 
 const _sectionTitleHeight = 50.0;
@@ -34,7 +36,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
 
   Trip? _trip;
   bool _isLoading = true;
-  String? _error;
 
   bool get _isDateRangeSet =>
       _currentDateRange?.start != null && _currentDateRange?.end != null;
@@ -50,7 +51,6 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         _trip = trip;
         _isLoading = false;
         _placeTextController.text = trip?.placeName ?? '';
-        _error = trip == null ? 'Trip not found' : null;
         _currentDateRange = (
           start: trip?.startDate,
           end: trip?.endDate,
@@ -61,14 +61,19 @@ class _TripInfoSectionState extends State<TripInfoSection> {
         logPrint('✅ Trip loaded successfully: ${trip.placeName}');
       } else {
         logPrint('❌ Trip not found: ${widget.tripId}');
+        AppSonnar.of(context).show(
+          AppToast(
+            title: Text('Error'),
+            description: Text('Trip not found'),
+            variant: AppToastVariant.destructive,
+          ),
+        );
+        context.go('/');
       }
     } catch (e) {
       logPrint('❌ Error loading trip: $e');
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _error = 'Error loading trip: $e';
-      });
+      setState(() => _isLoading = false);
     }
   }
 
