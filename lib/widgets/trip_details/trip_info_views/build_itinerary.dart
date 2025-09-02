@@ -104,14 +104,8 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
 
         // Determine document type based on file extension
         final extension = file.name.split('.').last.toLowerCase();
+        // TODO: Determine the file type
         DocumentType type = DocumentType.other;
-
-        if (['pdf'].contains(extension)) {
-          type = DocumentType.other;
-        } else if (['jpg', 'jpeg', 'png'].contains(extension)) {
-          type = DocumentType.other;
-        }
-
         filesToUpload.add((
           fileName: file.name,
           bytes: file.bytes!,

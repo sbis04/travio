@@ -3,8 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum DocumentType {
   passport,
   visa,
-  ticket,
+  flight,
+  train,
   hotel,
+  rental,
+  cruise,
   insurance,
   other,
 }
@@ -114,8 +117,14 @@ class TripDocument {
         return 'Passport';
       case DocumentType.visa:
         return 'Visa';
-      case DocumentType.ticket:
-        return 'Ticket';
+      case DocumentType.flight:
+        return 'Flight';
+      case DocumentType.train:
+        return 'Train';
+      case DocumentType.rental:
+        return 'Car Rental';
+      case DocumentType.cruise:
+        return 'Cruise';
       case DocumentType.hotel:
         return 'Hotel';
       case DocumentType.insurance:
