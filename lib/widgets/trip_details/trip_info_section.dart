@@ -341,7 +341,9 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 subtitle:
                     'Build your itinerary by adding flight tickets, hotel bookings, '
                     'and more.',
-                child: BuildItineraryView(),
+                child: _trip?.id != null
+                    ? BuildItineraryView(tripId: _trip!.id)
+                    : const SizedBox(),
                 onStepTap: () {
                   setState(() => _currentStep = 4);
                   _maybeScrollToCurrentStep();

@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:travio/models/place.dart';
 import 'package:travio/models/trip.dart';
+import 'package:travio/models/document.dart';
 import 'package:travio/utils/utils.dart';
 
 class FirestoreService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _tripsCollection = 'trips';
   static const String _visitPlacesSubcollection = 'visit_places';
+  static const String _documentsSubcollection = 'documents';
 
   // Create a new trip document
   static Future<String?> createTrip({
@@ -372,6 +374,181 @@ class FirestoreService {
     } catch (e) {
       logPrint('❌ Error batch updating visit places: $e');
       return false;
+    }
+  }
+
+  // ========== DOCUMENTS SUBCOLLECTION METHODS ==========
+
+  // Add a document to the trip
+  static Future<String?> addDocument({
+    required String tripId,
+    required TripDocument document,
+  }) async {
+    try {
+      logPrint('📄 Adding document: ${document.fileName} to trip $tripId');
+
+      final docRef = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .add(document.toFirestore());
+
+      logPrint(
+          '✅ Document added successfully: ${document.fileName} (${docRef.id})');
+      return docRef.id;
+    } catch (e) {
+      logPrint('❌ Error adding document: $e');
+      return null;
+    }
+  }
+
+  // Remove a document from the trip
+  static Future<bool> removeDocument({
+    required String tripId,
+    required String documentId,
+  }) async {
+    try {
+      logPrint('🗑️ Removing document: $documentId from trip $tripId');
+
+      await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .doc(documentId)
+          .delete();
+
+      logPrint('✅ Document removed successfully: $documentId');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error removing document: $e');
+      return false;
+    }
+  }
+
+  // Get all documents for a trip
+  static Future<List<TripDocument>> getDocuments(String tripId) async {
+    try {
+      logPrint('📄 Getting documents for trip: $tripId');
+
+      final querySnapshot = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .orderBy('uploaded_at', descending: true)
+          .get();
+
+      final documents = querySnapshot.docs
+          .map((doc) => TripDocument.fromFirestore(doc))
+          .toList();
+
+      logPrint('✅ Found ${documents.length} documents for trip $tripId');
+      return documents;
+    } catch (e) {
+      logPrint('❌ Error getting documents: $e');
+      return [];
+    }
+  }
+
+  // Get a specific document
+  static Future<TripDocument?> getDocument({
+    required String tripId,
+    required String documentId,
+  }) async {
+    try {
+      final doc = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .doc(documentId)
+          .get();
+
+      if (doc.exists) {
+        return TripDocument.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      logPrint('❌ Error getting document: $e');
+      return null;
+    }
+  }
+
+  // Update document metadata
+  static Future<bool> updateDocument({
+    required String tripId,
+    required String documentId,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .doc(documentId)
+          .update(updates);
+
+      logPrint('✅ Document updated successfully: $documentId');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error updating document: $e');
+      return false;
+    }
+  }
+
+  // Listen to documents (real-time)
+  static Stream<List<TripDocument>> watchDocuments(String tripId) {
+    return _firestore
+        .collection(_tripsCollection)
+        .doc(tripId)
+        .collection(_documentsSubcollection)
+        .orderBy('uploaded_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => TripDocument.fromFirestore(doc))
+            .toList());
+  }
+
+  // Get documents by type
+  static Future<List<TripDocument>> getDocumentsByType({
+    required String tripId,
+    required DocumentType type,
+  }) async {
+    try {
+      logPrint('📄 Getting ${type.name} documents for trip: $tripId');
+
+      final querySnapshot = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .where('type', isEqualTo: type.name)
+          .orderBy('uploaded_at', descending: true)
+          .get();
+
+      final documents = querySnapshot.docs
+          .map((doc) => TripDocument.fromFirestore(doc))
+          .toList();
+
+      logPrint('✅ Found ${documents.length} ${type.name} documents');
+      return documents;
+    } catch (e) {
+      logPrint('❌ Error getting documents by type: $e');
+      return [];
+    }
+  }
+
+  // Get document count for a trip
+  static Future<int> getDocumentCount(String tripId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_tripsCollection)
+          .doc(tripId)
+          .collection(_documentsSubcollection)
+          .count()
+          .get();
+
+      return querySnapshot.count ?? 0;
+    } catch (e) {
+      logPrint('❌ Error getting document count: $e');
+      return 0;
     }
   }
 }
