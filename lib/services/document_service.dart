@@ -187,4 +187,43 @@ class DocumentService {
   // Get max file size formatted
   static String get maxFileSizeFormatted =>
       StorageService.formatStorageSize(maxFileSizeBytes);
+
+  // Note: Document classification now happens automatically via Firestore trigger
+
+  // Upload documents (classification happens automatically via Firestore trigger)
+  static Future<List<TripDocument>> uploadDocumentsWithAutoClassification({
+    required String tripId,
+    required List<({String fileName, Uint8List bytes, String mimeType})> files,
+    Function(int bytesUploaded, int totalBytes)? onProgress,
+  }) async {
+    try {
+      logPrint('🚀 Starting document upload for trip: $tripId');
+      logPrint(
+          '   Classification will happen automatically via Firestore trigger');
+
+      // Convert files to upload format (initially as 'other' type)
+      final filesToUpload = files
+          .map((file) => (
+                fileName: file.fileName,
+                bytes: file.bytes,
+                mimeType: file.mimeType,
+                type: DocumentType.other, // Will be updated by trigger
+                description: null,
+              ))
+          .toList();
+
+      // Upload documents - classification will happen automatically
+      final uploadedDocs = await uploadDocuments(
+        tripId: tripId,
+        files: filesToUpload,
+        onProgress: onProgress,
+      );
+
+      logPrint('✅ Document upload completed - AI classification in progress');
+      return uploadedDocs;
+    } catch (e) {
+      logPrint('❌ Error in document upload: $e');
+      return [];
+    }
+  }
 }

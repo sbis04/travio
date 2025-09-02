@@ -1,4 +1,5 @@
 const { onCall } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 require("dotenv").config();
@@ -410,3 +411,149 @@ exports.getPopularPlaces = onCall(async (request) => {
         throw new Error(`Get popular places failed: ${error.message}`);
     }
 });
+
+/**
+ * Automatically classify document type when a new document is added to Firestore
+ * Triggered on: trips/{tripId}/documents/{documentId}
+ */
+exports.classifyDocumentOnCreate = onDocumentCreated(
+    {
+        document: "trips/{tripId}/documents/{documentId}",
+        region: "us-central1",
+    },
+    async (event) => {
+        try {
+            const documentData = event.data.data();
+            const tripId = event.params.tripId;
+            const documentId = event.params.documentId;
+
+            const fileName = documentData.original_file_name || documentData.file_name;
+            const downloadUrl = documentData.download_url;
+
+            if (!downloadUrl || !fileName) {
+                logger.warn(`Missing data for document classification: ${documentId}`);
+                return;
+            }
+
+            logger.info(`🤖 Auto-classifying document: ${fileName} (${documentId})`);
+
+            // Use Gemini Vision API for better document understanding
+            const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+            const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+            if (!GEMINI_API_KEY) {
+                logger.warn("GEMINI_API_KEY not found, falling back to filename-based classification");
+                // Fallback to simple filename-based classification
+                const documentType = classifyByFilename(fileName);
+                if (documentType !== "other") {
+                    await updateDocumentType(tripId, documentId, documentType);
+                }
+                return;
+            }
+
+            const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const prompt = `Analyze this document image and classify it into ONE of these categories:
+- passport: Passport documents (any country)
+- visa: Visa documents, entry permits, or immigration stamps
+- flight: Flight tickets, boarding passes, airline confirmations
+- train: Train tickets, railway bookings, rail passes
+- hotel: Hotel bookings, accommodation confirmations, resort reservations
+- rental: Car rental agreements, vehicle hire documents
+- cruise: Cruise tickets, ship boarding passes, maritime bookings
+- insurance: Travel insurance policies, coverage documents
+- other: Any other travel-related documents
+
+Look at the document layout, logos, headers, text content, and visual elements.
+Consider the overall document design and purpose.
+
+Respond with ONLY the category name (lowercase, no explanation or additional text).`;
+
+            // Fetch the image from the download URL
+            const imageResponse = await fetch(downloadUrl);
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+            }
+
+            const imageBuffer = await imageResponse.arrayBuffer();
+            const imageData = {
+                inlineData: {
+                    data: Buffer.from(imageBuffer).toString('base64'),
+                    mimeType: imageResponse.headers.get('content-type') || 'image/jpeg'
+                }
+            };
+
+            logger.info(`🤖 Sending document to Gemini for analysis: ${fileName}`);
+
+            const result = await model.generateContent([prompt, imageData]);
+            const response = await result.response;
+            const classification = response.text().trim().toLowerCase();
+
+            // Validate classification result
+            const validTypes = ["passport", "visa", "flight", "train", "hotel", "rental", "cruise", "insurance", "other"];
+            const documentType = validTypes.includes(classification) ? classification : "other";
+
+            logger.info(`🤖 Gemini classified document as: ${documentType}`);
+
+            // Only update if we found a specific type (not 'other')
+            if (documentType !== "other") {
+                logger.info(`✅ Document classified as: ${documentType}, updating Firestore...`);
+
+                // Update the document in Firestore
+                await admin.firestore()
+                    .collection("trips")
+                    .doc(tripId)
+                    .collection("documents")
+                    .doc(documentId)
+                    .update({
+                        type: documentType,
+                        classified_at: admin.firestore.Timestamp.now(),
+                    });
+
+                logger.info(`✅ Document type updated in Firestore: ${documentType}`);
+            } else {
+                logger.info(`ℹ️ Document remains as 'other' type: ${fileName}`);
+            }
+
+        } catch (error) {
+            logger.error("❌ Error in document classification trigger:", error);
+            // Don't throw error to avoid function retries
+        }
+    }
+);
+
+// Helper function for filename-based classification fallback
+function classifyByFilename(fileName) {
+    const name = fileName.toLowerCase();
+
+    if (name.includes("passport")) return "passport";
+    if (name.includes("visa")) return "visa";
+    if (name.includes("boarding") || name.includes("flight") || name.includes("ticket")) return "flight";
+    if (name.includes("train") || name.includes("rail")) return "train";
+    if (name.includes("hotel") || name.includes("booking")) return "hotel";
+    if (name.includes("rental") || name.includes("car")) return "rental";
+    if (name.includes("cruise") || name.includes("ship")) return "cruise";
+    if (name.includes("insurance") || name.includes("policy")) return "insurance";
+
+    return "other";
+}
+
+// Helper function to update document type
+async function updateDocumentType(tripId, documentId, documentType) {
+    try {
+        await admin.firestore()
+            .collection("trips")
+            .doc(tripId)
+            .collection("documents")
+            .doc(documentId)
+            .update({
+                type: documentType,
+                classified_at: admin.firestore.Timestamp.now(),
+            });
+
+        logger.info(`✅ Document type updated: ${documentType}`);
+    } catch (error) {
+        logger.error(`❌ Error updating document type: ${error}`);
+    }
+}

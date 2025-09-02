@@ -32,11 +32,14 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
   double _uploadProgress = 0.0;
   int _totalUploadBytes = 0;
   int _uploadedBytes = 0;
+  late Stream<List<TripDocument>> _documentsStream;
 
   @override
   void initState() {
     super.initState();
     _loadDocuments();
+    // Set up real-time document stream for automatic classification updates
+    _documentsStream = DocumentService.watchDocuments(widget.tripId);
   }
 
   Future<void> _loadDocuments() async {
@@ -196,7 +199,7 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
           AppToast(
             title: Text('Upload Complete'),
             description: Text(
-              'Successfully uploaded ${uploadedDocs.length} document${uploadedDocs.length == 1 ? '' : 's'} (${StorageService.formatStorageSize(_totalUploadBytes)})',
+              'Successfully uploaded ${uploadedDocs.length} document${uploadedDocs.length == 1 ? '' : 's'} (${StorageService.formatStorageSize(_totalUploadBytes)}). Documents will be automatically classified.',
             ),
             variant: AppToastVariant.primary,
           ),
@@ -389,15 +392,23 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
                         Expanded(
                           child: SizedBox(
                             height: 1.414 * _documentCardWidth,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _documents.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 16),
-                              itemBuilder: (context, index) => _DocumentCard(
-                                document: _documents[index],
-                                showTitle: false,
-                              ),
+                            child: StreamBuilder<List<TripDocument>>(
+                              stream: _documentsStream,
+                              builder: (context, snapshot) {
+                                final documents = snapshot.data ?? _documents;
+
+                                return ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: documents.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(width: 16),
+                                  itemBuilder: (context, index) =>
+                                      _DocumentCard(
+                                    document: documents[index],
+                                    showTitle: false,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
