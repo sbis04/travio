@@ -175,6 +175,14 @@ class FirestoreService {
     try {
       logPrint('💾 Adding visit place: ${place.name} to trip $tripId');
 
+      // Check if place already exists to prevent duplicates
+      final existingPlace =
+          await isVisitPlace(tripId: tripId, placeId: place.placeId);
+      if (existingPlace) {
+        logPrint('⚠️ Visit place already exists: ${place.name}');
+        return true; // Return true since the place is already there
+      }
+
       // Convert Place to Map for Firestore storage
       final placeData = {
         'place_id': place.placeId,
@@ -189,13 +197,12 @@ class FirestoreService {
         'added_at': Timestamp.now(),
       };
 
-      // Use place_id as document ID to avoid duplicates
+      // Let Firebase auto-generate document ID
       await _firestore
           .collection(_tripsCollection)
           .doc(tripId)
           .collection(_visitPlacesSubcollection)
-          .doc(place.placeId)
-          .set(placeData);
+          .add(placeData);
 
       logPrint('✅ Visit place added successfully: ${place.name}');
       return true;
@@ -213,14 +220,23 @@ class FirestoreService {
     try {
       logPrint('🗑️ Removing visit place: $placeId from trip $tripId');
 
-      await _firestore
+      // Find the document with matching place_id and delete it
+      final querySnapshot = await _firestore
           .collection(_tripsCollection)
           .doc(tripId)
           .collection(_visitPlacesSubcollection)
-          .doc(placeId)
-          .delete();
+          .where('place_id', isEqualTo: placeId)
+          .get();
 
-      logPrint('✅ Visit place removed successfully: $placeId');
+      // Delete all matching documents (should typically be just one)
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      logPrint(
+          '✅ Visit place removed successfully: $placeId (${querySnapshot.docs.length} docs deleted)');
       return true;
     } catch (e) {
       logPrint('❌ Error removing visit place: $e');
@@ -269,14 +285,15 @@ class FirestoreService {
     required String placeId,
   }) async {
     try {
-      final doc = await _firestore
+      final querySnapshot = await _firestore
           .collection(_tripsCollection)
           .doc(tripId)
           .collection(_visitPlacesSubcollection)
-          .doc(placeId)
+          .where('place_id', isEqualTo: placeId)
+          .limit(1)
           .get();
 
-      return doc.exists;
+      return querySnapshot.docs.isNotEmpty;
     } catch (e) {
       logPrint('❌ Error checking visit place: $e');
       return false;
@@ -327,7 +344,7 @@ class FirestoreService {
         batch.delete(doc.reference);
       }
 
-      // Then, add all new places
+      // Then, add all new places with auto-generated IDs
       for (final place in places) {
         final placeData = {
           'place_id': place.placeId,
@@ -342,7 +359,9 @@ class FirestoreService {
           'added_at': Timestamp.now(),
         };
 
-        batch.set(visitPlacesRef.doc(place.placeId), placeData);
+        // Use auto-generated document ID
+        final newDocRef = visitPlacesRef.doc();
+        batch.set(newDocRef, placeData);
       }
 
       await batch.commit();
