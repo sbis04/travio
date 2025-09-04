@@ -111,23 +111,45 @@ class Place {
   factory Place.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Place(
-      placeId: data['placeId'] ?? '',
+      placeId: data['place_id'] ?? '',
       name: data['name'] ?? '',
       address: data['address'],
       latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
       rating: data['rating']?.toDouble(),
-      userRatingsTotal: data['userRatingsTotal'],
+      userRatingsTotal: data['user_ratings_total'],
       types: List<String>.from(data['types'] ?? []),
-      photoReference: data['photoReference'],
+      photoReference: data['photo_reference'],
+      photoUrls: List<String>.from(data['photo_urls'] ?? []),
       vicinity: data['vicinity'],
-      formattedAddress: data['formattedAddress'],
-      internationalPhoneNumber: data['internationalPhoneNumber'],
+      formattedAddress: data['formatted_address'],
+      internationalPhoneNumber: data['international_phone_number'],
       website: data['website'],
-      openingHours: data['openingHours'] != null
-          ? PlaceOpeningHours.fromJson(data['openingHours'])
+      openingHours: data['opening_hours'] != null
+          ? PlaceOpeningHours.fromJson(data['opening_hours'])
           : null,
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'place_id': placeId,
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'rating': rating,
+      'user_ratings_total': userRatingsTotal,
+      'types': types,
+      'photo_reference': photoReference,
+      'photo_urls': photoUrls,
+      'vicinity': vicinity,
+      'formatted_address': formattedAddress,
+      'international_phone_number': internationalPhoneNumber,
+      'website': website,
+      'opening_hours': openingHours?.toJson(),
+      'cached_at': FieldValue.serverTimestamp(),
+    };
   }
 
   String getPhotoUrl({int maxWidth = 400}) {

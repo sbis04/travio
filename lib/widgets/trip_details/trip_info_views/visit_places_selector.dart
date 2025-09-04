@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:travio/models/place.dart';
-import 'package:travio/services/places_service.dart';
+import 'package:travio/services/visit_places_cache_service.dart';
 import 'package:travio/utils/utils.dart';
 
 class VisitPlacesSelectorView extends StatefulWidget {
@@ -27,6 +27,7 @@ class _VisitPlacesSelectorViewState extends State<VisitPlacesSelectorView> {
   List<Place> _selectedPlaces = [];
   bool _isLoading = true;
   String? _error;
+  bool _isLoadingFromCache = false;
 
   @override
   void initState() {
@@ -54,7 +55,24 @@ class _VisitPlacesSelectorViewState extends State<VisitPlacesSelectorView> {
         _error = null;
       });
 
-      final places = await PlacesService.getPopularPlaces(
+      logPrint('🏛️ Loading popular places for: ${widget.selectedPlaceId}');
+
+      // Check cache stats for debugging
+      final cacheStats =
+          await VisitPlacesCacheService.getCacheStats(widget.selectedPlaceId);
+      _isLoadingFromCache =
+          cacheStats['cached'] == true && cacheStats['is_expired'] != true;
+
+      logPrint('📊 Cache stats: $cacheStats');
+      if (_isLoadingFromCache) {
+        logPrint(
+            '⚡ Loading from cache (${cacheStats['place_count']} places, ${cacheStats['age_days']} days old)');
+      } else {
+        logPrint('📡 Loading from Places API (cache miss or expired)');
+      }
+
+      // Use cache-first approach
+      final places = await VisitPlacesCacheService.getPopularPlaces(
         placeId: widget.selectedPlaceId,
         maxResults: 20,
       );
@@ -64,6 +82,8 @@ class _VisitPlacesSelectorViewState extends State<VisitPlacesSelectorView> {
           _popularPlaces = places;
           _isLoading = false;
         });
+
+        logPrint('✅ Loaded ${places.length} popular places');
       }
     } catch (e) {
       logPrint('❌ Error loading popular places: $e');
