@@ -26,7 +26,15 @@ Create a `.env` file with the following variables:
 
 ```
 GOOGLE_PLACES_API_KEY=your_actual_google_places_api_key_here
+GEMINI_API_KEY=your_actual_gemini_api_key_here
+AVIATIONSTACK_API_KEY=your_actual_aviationstack_api_key_here
 ```
+
+### API Keys Setup:
+
+1. **Google Places API**: Get from [Google Cloud Console](https://console.cloud.google.com/)
+2. **Gemini API**: Get from [Google AI Studio](https://aistudio.google.com/)
+3. **AviationStack API**: Get from [AviationStack](https://aviationstack.com/) (free tier: 1000 requests/month)
 
 ## Available Functions
 

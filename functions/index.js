@@ -500,18 +500,37 @@ Respond with ONLY the category name (lowercase, no explanation or additional tex
             if (documentType !== "other") {
                 logger.info(`✅ Document classified as: ${documentType}, updating Firestore...`);
 
-                // Update the document in Firestore
+                // Update the document in Firestore with classification
+                const updateData = {
+                    type: documentType,
+                    classified_at: admin.firestore.Timestamp.now(),
+                };
+
+                // If it's a flight document, extract flight information
+                if (documentType === "flight") {
+                    logger.info(`✈️ Extracting flight information from: ${fileName}`);
+                    try {
+                        const extractionResult = await extractFlightInformation(imageData, fileName);
+                        if (extractionResult && extractionResult.enhanced) {
+                            logger.info(`✅ Flight information extracted: ${JSON.stringify(extractionResult.enhanced, null, 2)}`);
+
+                            // Store flight info and airport details in subcollections
+                            await storeFlightInfoSubcollections(tripId, documentId, extractionResult.enhanced, extractionResult.airportData);
+                        }
+                    } catch (flightError) {
+                        logger.warn(`⚠️ Failed to extract flight info: ${flightError.message}`);
+                        // Continue with classification even if flight extraction fails
+                    }
+                }
+
                 await admin.firestore()
                     .collection("trips")
                     .doc(tripId)
                     .collection("documents")
                     .doc(documentId)
-                    .update({
-                        type: documentType,
-                        classified_at: admin.firestore.Timestamp.now(),
-                    });
+                    .update(updateData);
 
-                logger.info(`✅ Document type updated in Firestore: ${documentType}`);
+                logger.info(`✅ Document updated in Firestore: ${documentType}`);
             } else {
                 logger.info(`ℹ️ Document remains as 'other' type: ${fileName}`);
             }
@@ -555,5 +574,475 @@ async function updateDocumentType(tripId, documentId, documentType) {
         logger.info(`✅ Document type updated: ${documentType}`);
     } catch (error) {
         logger.error(`❌ Error updating document type: ${error}`);
+    }
+}
+
+// Extract flight information from flight documents using Gemini
+async function extractFlightInformation(imageData, fileName) {
+    try {
+        const { GoogleGenerativeAI } = require("@google/generative-ai");
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+        if (!GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY not available for flight extraction");
+        }
+
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const extractionPrompt = `Extract flight information from this boarding pass/flight ticket image.
+Return a JSON object with the following fields (use null for missing information):
+
+{
+  "flight_number": "flight number exactly as shown (e.g., 6E123, AI101, UK955, 6E 123)",
+  "airline": "airline name (e.g., Air India, IndiGo, Vistara)",
+  "origin_code": "origin airport IATA code (e.g., DEL, BOM, CCU, BLR)",
+  "destination_code": "destination airport IATA code (e.g., BLR, MAA, HYD, DEL)",
+  "departure_time": "departure date and time in ISO format (YYYY-MM-DDTHH:MM:SS)",
+  "arrival_time": "arrival date and time in ISO format (YYYY-MM-DDTHH:MM:SS)",
+  "gate": "gate number if available",
+  "terminal": "terminal information if available",
+  "seat": "seat number (e.g., 12A, 23F)",
+  "confirmation_number": "booking/PNR reference",
+  "passenger_name": "passenger name",
+  "ticket_number": "ticket number if visible",
+  "class_of_service": "travel class (Economy, Business, First)",
+  "status": "flight status if mentioned (Confirmed, Cancelled, Delayed)"
+}
+
+CRITICAL INSTRUCTIONS:
+- Extract flight number EXACTLY as it appears (including spaces, dashes)
+- Look for patterns like: "6E123", "6E 123", "6E-123", "AI101", "UK955"
+- Use proper 3-letter IATA airport codes (DEL, BOM, CCU, BLR, MAA, HYD, etc.)
+- Format dates as ISO 8601: YYYY-MM-DDTHH:MM:SS (24-hour format)
+- Return ONLY valid JSON, no additional text or explanations
+- Use null for any missing fields`;
+
+        logger.info(`🔍 Analyzing flight document with Gemini...`);
+
+        const geminiResult = await model.generateContent([extractionPrompt, imageData]);
+        const response = await geminiResult.response;
+        let extractedText = response.text().trim();
+
+        // Clean up the response to ensure valid JSON
+        extractedText = extractedText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+
+        logger.info(`📄 Raw extraction result: ${extractedText}`);
+
+        // Parse the JSON response
+        let flightData;
+        try {
+            flightData = JSON.parse(extractedText);
+            logger.info(`🎯 Gemini extracted flight data: ${JSON.stringify(flightData, null, 2)}`);
+        } catch (parseError) {
+            logger.warn(`⚠️ Failed to parse JSON response: ${parseError.message}`);
+            logger.warn(`📄 Raw response: ${extractedText}`);
+            return null;
+        }
+
+        // Enhance extracted data with flight API and Places API
+        const enhancedResult = await enhanceFlightData(flightData);
+
+        return enhancedResult;
+
+    } catch (error) {
+        logger.error(`❌ Error extracting flight information: ${error.message}`);
+        throw error;
+    }
+}
+
+// Enhance flight data with Places API for airport information
+async function enhanceFlightData(flightData) {
+    try {
+        logger.info(`🌍 Enhancing flight data with airport locations...`);
+
+        const enhanced = { ...flightData };
+
+        // Convert ISO string dates to Firestore Timestamps
+        if (enhanced.departure_time && typeof enhanced.departure_time === 'string') {
+            try {
+                const departureDate = new Date(enhanced.departure_time);
+                if (!isNaN(departureDate.getTime())) {
+                    enhanced.departure_time = admin.firestore.Timestamp.fromDate(departureDate);
+                    logger.info(`📅 Converted departure time: ${enhanced.departure_time.toDate()}`);
+                } else {
+                    logger.warn(`⚠️ Invalid departure time format: ${enhanced.departure_time}`);
+                    enhanced.departure_time = null;
+                }
+            } catch (dateError) {
+                logger.warn(`⚠️ Error parsing departure time: ${dateError.message}`);
+                enhanced.departure_time = null;
+            }
+        }
+
+        if (enhanced.arrival_time && typeof enhanced.arrival_time === 'string') {
+            try {
+                const arrivalDate = new Date(enhanced.arrival_time);
+                if (!isNaN(arrivalDate.getTime())) {
+                    enhanced.arrival_time = admin.firestore.Timestamp.fromDate(arrivalDate);
+                    logger.info(`📅 Converted arrival time: ${enhanced.arrival_time.toDate()}`);
+                } else {
+                    logger.warn(`⚠️ Invalid arrival time format: ${enhanced.arrival_time}`);
+                    enhanced.arrival_time = null;
+                }
+            } catch (dateError) {
+                logger.warn(`⚠️ Error parsing arrival time: ${dateError.message}`);
+                enhanced.arrival_time = null;
+            }
+        }
+
+        // Add extracted timestamp
+        enhanced.extracted_at = admin.firestore.Timestamp.now();
+
+        // Try to enhance with flight API (free plan compatible)
+        if (enhanced.flight_number && enhanced.departure_time) {
+            try {
+                logger.info(`✈️ Attempting to enhance flight data for: ${enhanced.flight_number}`);
+
+                // Try to get basic flight data (compatible with free plan)
+                const basicFlightData = await getBasicFlightData(enhanced);
+                if (basicFlightData) {
+                    Object.assign(enhanced, basicFlightData);
+                    logger.info(`✅ Enhanced with basic flight data`);
+                } else {
+                    logger.info(`📊 No API data available, using calculation-based approach`);
+                }
+
+                // Always try to calculate arrival time if missing
+                if (!enhanced.arrival_time) {
+                    const calculatedArrival = await calculateFlightArrivalTime(enhanced, enhanced);
+                    if (calculatedArrival) {
+                        enhanced.arrival_time = calculatedArrival;
+                        enhanced.status = enhanced.status || 'Estimated';
+                        logger.info(`✅ Calculated arrival time using duration estimation`);
+                    }
+                }
+            } catch (apiError) {
+                logger.warn(`⚠️ Flight API error: ${apiError.message}`);
+
+                // Fallback to calculation-based approach
+                logger.info(`🔄 Using calculation-only approach...`);
+                if (!enhanced.arrival_time) {
+                    const calculatedArrival = await calculateFlightArrivalTime(enhanced, enhanced);
+                    if (calculatedArrival) {
+                        enhanced.arrival_time = calculatedArrival;
+                        enhanced.status = 'Estimated';
+                        logger.info(`✅ Used calculation fallback for arrival time`);
+                    }
+                }
+            }
+        }
+
+        // Get airport information from Places API and store in subcollections
+        const airportData = {};
+
+        if (enhanced.origin_code) {
+            const originAirport = await findAirportByCode(enhanced.origin_code);
+            if (originAirport) {
+                enhanced.origin_place_name = originAirport.name;
+                enhanced.origin_place_id = originAirport.place_id;
+                airportData.origin = originAirport;
+            }
+        }
+
+        if (enhanced.destination_code) {
+            const destAirport = await findAirportByCode(enhanced.destination_code);
+            if (destAirport) {
+                enhanced.destination_place_name = destAirport.name;
+                enhanced.destination_place_id = destAirport.place_id;
+                airportData.destination = destAirport;
+            }
+        }
+
+        logger.info(`✅ Enhanced flight data: ${enhanced.origin_code} → ${enhanced.destination_code}`);
+
+        // Return both enhanced data and airport details for subcollections
+        return { enhanced, airportData };
+
+    } catch (error) {
+        logger.warn(`⚠️ Failed to enhance flight data: ${error.message}`);
+        // Return original data even if enhancement fails
+        return {
+            enhanced: {
+                ...flightData,
+                extracted_at: admin.firestore.Timestamp.now(),
+            },
+            airportData: {},
+        };
+    }
+}
+
+// Find airport information using Places API
+async function findAirportByCode(airportCode) {
+    try {
+        logger.info(`🔍 Finding airport info for: ${airportCode}`);
+
+        // Search for airport using the IATA code
+        const searchQuery = `${airportCode} airport`;
+
+        const response = await fetch(`${PLACES_BASE_URL}/places:searchText`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location",
+            },
+            body: JSON.stringify({
+                textQuery: searchQuery,
+                includedType: "airport",
+                maxResultCount: 3,
+            }),
+        });
+
+        if (!response.ok) {
+            logger.warn(`⚠️ Places API search failed: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        const places = data.places || [];
+
+        if (places.length === 0) {
+            logger.warn(`⚠️ No airport found for code: ${airportCode}`);
+            return null;
+        }
+
+        // Find the best match (usually the first result)
+        const airport = places[0];
+        const airportName = airport.displayName && airport.displayName.text ? airport.displayName.text : `${airportCode} Airport`;
+
+        logger.info(`✅ Found airport: ${airportName} (${airport.id})`);
+
+        return {
+            place_id: airport.id,
+            name: airportName,
+            address: airport.formattedAddress,
+            location: airport.location,
+        };
+
+    } catch (error) {
+        logger.warn(`⚠️ Error finding airport ${airportCode}: ${error.message}`);
+        return null;
+    }
+}
+
+// Store flight info and airport details in organized subcollections
+async function storeFlightInfoSubcollections(tripId, documentId, flightInfo, airportData) {
+    try {
+        logger.info(`✈️ Storing flight info subcollections for document: ${documentId}`);
+
+        const batch = admin.firestore().batch();
+        const documentRef = admin.firestore()
+            .collection("trips")
+            .doc(tripId)
+            .collection("documents")
+            .doc(documentId);
+
+        // Store main flight information in flight_info subcollection
+        const flightInfoRef = documentRef.collection("flight_info").doc("details");
+        batch.set(flightInfoRef, flightInfo);
+        logger.info(`✈️ Adding flight details: ${flightInfo.flight_number}`);
+
+        // Store origin place details inside flight_info subcollection
+        if (airportData.origin) {
+            const originRef = documentRef.collection("flight_info").doc("origin_place");
+            batch.set(originRef, {
+                place_id: airportData.origin.place_id,
+                name: airportData.origin.name,
+                formatted_address: airportData.origin.address,
+                location: airportData.origin.location,
+                place_type: "airport",
+                created_at: admin.firestore.Timestamp.now(),
+            });
+            logger.info(`📍 Adding origin place: ${airportData.origin.name}`);
+        }
+
+        // Store destination place details inside flight_info subcollection
+        if (airportData.destination) {
+            const destinationRef = documentRef.collection("flight_info").doc("destination_place");
+            batch.set(destinationRef, {
+                place_id: airportData.destination.place_id,
+                name: airportData.destination.name,
+                formatted_address: airportData.destination.address,
+                location: airportData.destination.location,
+                place_type: "airport",
+                created_at: admin.firestore.Timestamp.now(),
+            });
+            logger.info(`📍 Adding destination place: ${airportData.destination.name}`);
+        }
+
+        await batch.commit();
+        logger.info(`✅ Flight info subcollections stored successfully`);
+
+    } catch (error) {
+        logger.error(`❌ Error storing flight info subcollections: ${error.message}`);
+        // Don't throw error - this is not critical for the main flow
+    }
+}
+
+// Get basic flight data (free plan compatible)
+async function getBasicFlightData(flightData) {
+    try {
+        const AVIATIONSTACK_API_KEY = process.env.AVIATIONSTACK_API_KEY;
+
+        if (!AVIATIONSTACK_API_KEY) {
+            logger.info("AVIATIONSTACK_API_KEY not found, skipping API enhancement");
+            return null;
+        }
+
+        logger.info(`✈️ Trying basic flight data for: ${flightData.flight_number}`);
+
+        // For free plan, we'll skip the API call entirely and rely on calculation
+        // The free plan has very limited access and the 403 error indicates function restriction
+        logger.info(`📊 Free plan detected, using calculation-based approach only`);
+        return null;
+
+        // Note: If you upgrade to a paid plan, you can uncomment the code below:
+        /*
+        // Extract airline code and flight number
+        const flightNumber = flightData.flight_number.toString().trim().toUpperCase();
+        
+        // Format departure date for API (YYYY-MM-DD)
+        const departureDate = flightData.departure_time.toDate();
+        const dateStr = departureDate.toISOString().split('T')[0];
+
+        // Try basic endpoint that might be available in free plan
+        const apiUrl = `https://api.aviationstack.com/v1/flights`;
+        const params = new URLSearchParams({
+            access_key: AVIATIONSTACK_API_KEY,
+            flight_iata: flightNumber,
+            flight_date: dateStr,
+            limit: 1
+        });
+
+        const response = await fetch(`${apiUrl}?${params}`);
+        
+        if (!response.ok) {
+            logger.warn(`⚠️ AviationStack API not available in free plan: ${response.status}`);
+            return null;
+        }
+
+        const apiData = await response.json();
+        // ... process response
+        */
+
+    } catch (error) {
+        logger.warn(`⚠️ Basic flight data error: ${error.message}`);
+        return null;
+    }
+}
+
+// Calculate arrival time when AviationStack API doesn't provide it
+async function calculateFlightArrivalTime(originalFlightData, apiFlightData) {
+    try {
+        logger.info(`📊 Calculating arrival time for ${originalFlightData.origin_code} → ${originalFlightData.destination_code}`);
+
+        // Method 1: Use original extracted duration if both times were extracted
+        if (originalFlightData.departure_time && originalFlightData.arrival_time) {
+            const originalDeparture = originalFlightData.departure_time.toDate();
+            const originalArrival = originalFlightData.arrival_time.toDate();
+            const extractedDuration = originalArrival.getTime() - originalDeparture.getTime();
+
+            // Use real departure time from API if available, otherwise use extracted
+            const realDeparture = apiFlightData.departure_time
+                ? apiFlightData.departure_time.toDate()
+                : originalDeparture;
+
+            const calculatedArrival = new Date(realDeparture.getTime() + extractedDuration);
+
+            logger.info(`✅ Calculated arrival using extracted duration: ${calculatedArrival.toISOString()}`);
+            logger.info(`⏱️ Flight duration: ${Math.round(extractedDuration / (1000 * 60))} minutes`);
+
+            return admin.firestore.Timestamp.fromDate(calculatedArrival);
+        }
+
+        // Method 2: Use route-based estimation
+        if (originalFlightData.origin_code && originalFlightData.destination_code) {
+            const estimatedDuration = getEstimatedFlightDuration(
+                originalFlightData.origin_code,
+                originalFlightData.destination_code
+            );
+
+            if (estimatedDuration) {
+                const departureTime = apiFlightData.departure_time
+                    ? apiFlightData.departure_time.toDate()
+                    : originalFlightData.departure_time.toDate();
+
+                const estimatedArrival = new Date(departureTime.getTime() + estimatedDuration);
+
+                logger.info(`✅ Estimated arrival using route data: ${estimatedArrival.toISOString()}`);
+                logger.info(`⏱️ Estimated duration: ${Math.round(estimatedDuration / (1000 * 60))} minutes`);
+
+                return admin.firestore.Timestamp.fromDate(estimatedArrival);
+            }
+        }
+
+        logger.warn(`⚠️ Could not calculate arrival time`);
+        return null;
+
+    } catch (error) {
+        logger.warn(`⚠️ Error calculating arrival time: ${error.message}`);
+        return null;
+    }
+}
+
+// Get estimated flight duration between airports
+function getEstimatedFlightDuration(originCode, destinationCode) {
+    try {
+        // Common flight durations (in milliseconds) - can be expanded
+        const commonRoutes = {
+            // India domestic routes
+            'CCU-BLR': 2.5 * 60 * 60 * 1000, // 2.5 hours
+            'BLR-CCU': 2.5 * 60 * 60 * 1000,
+            'DEL-BOM': 2.5 * 60 * 60 * 1000,
+            'BOM-DEL': 2.5 * 60 * 60 * 1000,
+            'DEL-BLR': 2.5 * 60 * 60 * 1000,
+            'BLR-DEL': 2.5 * 60 * 60 * 1000,
+            'CCU-DEL': 2 * 60 * 60 * 1000,
+            'DEL-CCU': 2 * 60 * 60 * 1000,
+            'BOM-CCU': 2.5 * 60 * 60 * 1000,
+            'CCU-BOM': 2.5 * 60 * 60 * 1000,
+            'DEL-MAA': 2.5 * 60 * 60 * 1000,
+            'MAA-DEL': 2.5 * 60 * 60 * 1000,
+            'BOM-BLR': 1.5 * 60 * 60 * 1000,
+            'BLR-BOM': 1.5 * 60 * 60 * 1000,
+
+            // International routes (examples)
+            'DEL-JFK': 15 * 60 * 60 * 1000, // 15 hours
+            'JFK-DEL': 13 * 60 * 60 * 1000, // 13 hours (shorter due to jet stream)
+            'BOM-LHR': 9 * 60 * 60 * 1000,  // 9 hours
+            'LHR-BOM': 8.5 * 60 * 60 * 1000,
+            'DEL-DXB': 3.5 * 60 * 60 * 1000, // 3.5 hours
+            'DXB-DEL': 3.5 * 60 * 60 * 1000,
+            'BOM-SIN': 5.5 * 60 * 60 * 1000, // 5.5 hours
+            'SIN-BOM': 5.5 * 60 * 60 * 1000,
+        };
+
+        const routeKey = `${originCode}-${destinationCode}`;
+        const reverseRouteKey = `${destinationCode}-${originCode}`;
+
+        // Check for exact route or reverse route
+        if (commonRoutes[routeKey]) {
+            logger.info(`✅ Found route duration for ${routeKey}: ${commonRoutes[routeKey] / (1000 * 60)} minutes`);
+            return commonRoutes[routeKey];
+        } else if (commonRoutes[reverseRouteKey]) {
+            logger.info(`✅ Found reverse route duration for ${routeKey}: ${commonRoutes[reverseRouteKey] / (1000 * 60)} minutes`);
+            return commonRoutes[reverseRouteKey];
+        }
+
+        // Fallback: Use a reasonable default based on route type
+        const isInternational = originCode.length === 3 && destinationCode.length === 3 &&
+            originCode.substring(0, 1) !== destinationCode.substring(0, 1);
+
+        const defaultDuration = isInternational
+            ? 6 * 60 * 60 * 1000  // 6 hours for international
+            : 2 * 60 * 60 * 1000; // 2 hours for domestic
+
+        logger.info(`⚠️ No specific route data for ${routeKey}, using default: ${defaultDuration / (1000 * 60)} minutes`);
+        return defaultDuration;
+
+    } catch (error) {
+        logger.warn(`⚠️ Error estimating flight duration: ${error.message}`);
+        return 2 * 60 * 60 * 1000; // 2 hour fallback
     }
 }

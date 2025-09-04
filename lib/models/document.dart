@@ -1,5 +1,171 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Flight information extracted from flight documents
+class FlightInformation {
+  final String? flightNumber;
+  final String? airline;
+  final String? originCode; // Airport IATA code (e.g., "JFK")
+  final String? destinationCode; // Airport IATA code (e.g., "LAX")
+  final String? originPlaceName; // Full airport name
+  final String? destinationPlaceName; // Full airport name
+  final String? originPlaceId; // Places API place ID for airport
+  final String? destinationPlaceId; // Places API place ID for airport
+  final DateTime? departureTime;
+  final DateTime? arrivalTime;
+  final String? gate;
+  final String? terminal;
+  final String? seat;
+  final String? confirmationNumber;
+  final String? passengerName;
+  final String? ticketNumber;
+  final String? classOfService; // Economy, Business, First
+  final String? status; // Confirmed, Cancelled, Delayed
+  final DateTime? extractedAt;
+
+  FlightInformation({
+    this.flightNumber,
+    this.airline,
+    this.originCode,
+    this.destinationCode,
+    this.originPlaceName,
+    this.destinationPlaceName,
+    this.originPlaceId,
+    this.destinationPlaceId,
+    this.departureTime,
+    this.arrivalTime,
+    this.gate,
+    this.terminal,
+    this.seat,
+    this.confirmationNumber,
+    this.passengerName,
+    this.ticketNumber,
+    this.classOfService,
+    this.status,
+    this.extractedAt,
+  });
+
+  factory FlightInformation.fromFirestore(Map<String, dynamic> data) {
+    return FlightInformation(
+      flightNumber: data['flight_number'],
+      airline: data['airline'],
+      originCode: data['origin_code'],
+      destinationCode: data['destination_code'],
+      originPlaceName: data['origin_place_name'],
+      destinationPlaceName: data['destination_place_name'],
+      originPlaceId: data['origin_place_id'],
+      destinationPlaceId: data['destination_place_id'],
+      departureTime: _parseDateTime(data['departure_time']),
+      arrivalTime: _parseDateTime(data['arrival_time']),
+      gate: data['gate'],
+      terminal: data['terminal'],
+      seat: data['seat'],
+      confirmationNumber: data['confirmation_number'],
+      passengerName: data['passenger_name'],
+      ticketNumber: data['ticket_number'],
+      classOfService: data['class_of_service'],
+      status: data['status'],
+      extractedAt: _parseDateTime(data['extracted_at']),
+    );
+  }
+
+  // Helper method to safely parse DateTime from various formats
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    try {
+      if (value is Timestamp) {
+        return value.toDate();
+      } else if (value is String) {
+        // Handle ISO string format as fallback
+        return DateTime.parse(value);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      // Log error but don't throw - return null for invalid dates
+      print('⚠️ Error parsing DateTime: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'flight_number': flightNumber,
+      'airline': airline,
+      'origin_code': originCode,
+      'destination_code': destinationCode,
+      'origin_place_name': originPlaceName,
+      'destination_place_name': destinationPlaceName,
+      'origin_place_id': originPlaceId,
+      'destination_place_id': destinationPlaceId,
+      'departure_time':
+          departureTime != null ? Timestamp.fromDate(departureTime!) : null,
+      'arrival_time':
+          arrivalTime != null ? Timestamp.fromDate(arrivalTime!) : null,
+      'gate': gate,
+      'terminal': terminal,
+      'seat': seat,
+      'confirmation_number': confirmationNumber,
+      'passenger_name': passengerName,
+      'ticket_number': ticketNumber,
+      'class_of_service': classOfService,
+      'status': status,
+      'extracted_at': extractedAt != null
+          ? Timestamp.fromDate(extractedAt!)
+          : FieldValue.serverTimestamp(),
+    };
+  }
+
+  FlightInformation copyWith({
+    String? flightNumber,
+    String? airline,
+    String? originCode,
+    String? destinationCode,
+    String? originPlaceName,
+    String? destinationPlaceName,
+    String? originPlaceId,
+    String? destinationPlaceId,
+    DateTime? departureTime,
+    DateTime? arrivalTime,
+    String? gate,
+    String? terminal,
+    String? seat,
+    String? confirmationNumber,
+    String? passengerName,
+    String? ticketNumber,
+    String? classOfService,
+    String? status,
+    DateTime? extractedAt,
+  }) {
+    return FlightInformation(
+      flightNumber: flightNumber ?? this.flightNumber,
+      airline: airline ?? this.airline,
+      originCode: originCode ?? this.originCode,
+      destinationCode: destinationCode ?? this.destinationCode,
+      originPlaceName: originPlaceName ?? this.originPlaceName,
+      destinationPlaceName: destinationPlaceName ?? this.destinationPlaceName,
+      originPlaceId: originPlaceId ?? this.originPlaceId,
+      destinationPlaceId: destinationPlaceId ?? this.destinationPlaceId,
+      departureTime: departureTime ?? this.departureTime,
+      arrivalTime: arrivalTime ?? this.arrivalTime,
+      gate: gate ?? this.gate,
+      terminal: terminal ?? this.terminal,
+      seat: seat ?? this.seat,
+      confirmationNumber: confirmationNumber ?? this.confirmationNumber,
+      passengerName: passengerName ?? this.passengerName,
+      ticketNumber: ticketNumber ?? this.ticketNumber,
+      classOfService: classOfService ?? this.classOfService,
+      status: status ?? this.status,
+      extractedAt: extractedAt ?? this.extractedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'FlightInformation(flight: $flightNumber, route: $originCode→$destinationCode, departure: $departureTime)';
+  }
+}
+
 enum DocumentType {
   passport,
   visa,
