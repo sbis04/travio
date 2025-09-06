@@ -1,10 +1,13 @@
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:travio/models/document.dart';
 import 'package:travio/services/storage_service.dart';
 import 'package:travio/services/firestore_service.dart';
 import 'package:travio/utils/utils.dart';
 
 class DocumentService {
+  static final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
   // Upload documents and save metadata to Firestore
   static Future<List<TripDocument>> uploadDocuments({
     required String tripId,

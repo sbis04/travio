@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'dart:typed_data';
 
@@ -5,6 +6,7 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:travio/models/document.dart';
 import 'package:travio/services/document_service.dart';
 import 'package:travio/services/storage_service.dart';
@@ -28,6 +30,7 @@ class BuildItineraryView extends StatefulWidget {
 
 class _BuildItineraryViewState extends State<BuildItineraryView> {
   List<TripDocument> _documents = [];
+  List<TripDocument> _flightDocuments = [];
   bool _isUploading = false;
   double _uploadProgress = 0.0;
   int _totalUploadBytes = 0;
@@ -37,23 +40,18 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
   @override
   void initState() {
     super.initState();
-    _loadDocuments();
-    // Set up real-time document stream for automatic classification updates
+    // Set up real-time document stream listener for automatic classification updates
     _documentsStream = DocumentService.watchDocuments(widget.tripId);
-  }
-
-  Future<void> _loadDocuments() async {
-    try {
-      final documents = await DocumentService.getDocuments(widget.tripId);
-
+    _documentsStream.listen((documents) {
       if (mounted) {
         setState(() {
           _documents = documents;
+          _flightDocuments = documents
+              .where((doc) => doc.type == DocumentType.flight)
+              .toList();
         });
       }
-    } catch (e) {
-      logPrint('❌ Error loading documents: $e');
-    }
+    });
   }
 
   Future<void> _pickAndUploadDocuments() async {
@@ -204,9 +202,6 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
             variant: AppToastVariant.primary,
           ),
         );
-
-        // Refresh the document list
-        _loadDocuments();
       }
     } catch (e) {
       logPrint('❌ Upload error: $e');
@@ -256,198 +251,201 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
       constraints: const BoxConstraints(maxWidth: 600),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 24),
-        child: SingleChildScrollView(
-          child: Column(
-            spacing: 16,
-            children: [
-              _documents.isEmpty
-                  ? InkWell(
-                      onTap: _isUploading ? null : _pickAndUploadDocuments,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Row(
-                              children: [
-                                Opacity(
-                                  opacity: 0.5,
-                                  child: _DocumentCard(showTitle: true),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          SizedBox(
-                                            height: 1.414 * _documentCardWidth,
-                                            child: Opacity(
-                                              opacity: 0.4,
-                                              child: ListView.separated(
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                physics:
-                                                    const NeverScrollableScrollPhysics(),
-                                                itemCount: 6,
-                                                separatorBuilder: (context,
-                                                        index) =>
-                                                    const SizedBox(width: 16),
-                                                itemBuilder: (context, index) =>
-                                                    const _DocumentCard(),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            child: Column(
+              spacing: 16,
+              children: [
+                _documents.isEmpty
+                    ? GestureDetector(
+                        onTap: _isUploading ? null : _pickAndUploadDocuments,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0, right: 8.0),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  Opacity(
+                                    opacity: 0.5,
+                                    child: _DocumentCard(showTitle: true),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            SizedBox(
+                                              height:
+                                                  1.414 * _documentCardWidth,
+                                              child: Opacity(
+                                                opacity: 0.4,
+                                                child: ListView.separated(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  physics:
+                                                      const NeverScrollableScrollPhysics(),
+                                                  itemCount: 6,
+                                                  separatorBuilder: (context,
+                                                          index) =>
+                                                      const SizedBox(width: 16),
+                                                  itemBuilder:
+                                                      (context, index) =>
+                                                          const _DocumentCard(),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          BackdropFilter(
-                                            filter: ImageFilter.blur(
-                                              sigmaX: 2,
-                                              sigmaY: 2,
-                                            ),
-                                            child: SizedBox(),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                            _isUploading
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 40,
-                                        height: 40,
-                                        child: CircularProgressIndicator(
-                                          value: _uploadProgress,
-                                          strokeWidth: 3,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
+                                            BackdropFilter(
+                                              filter: ImageFilter.blur(
+                                                sigmaX: 2,
+                                                sigmaY: 2,
+                                              ),
+                                              child: SizedBox(),
+                                            )
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'Uploading... ${(_uploadProgress * 100).toStringAsFixed(0)}%\n${StorageService.formatStorageSize(_uploadedBytes)} / ${StorageService.formatStorageSize(_totalUploadBytes)}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+                                    ),
                                   )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_circle_rounded,
-                                        size: 40,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'Add Documents',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : Row(
-                      spacing: 16,
-                      children: [
-                        InkWell(
-                          onTap: _isUploading ? null : _pickAndUploadDocuments,
-                          borderRadius: BorderRadius.circular(20),
-                          child: _DocumentCard(
-                            title: 'Add Documents',
-                            icon: Icons.add_circle_rounded,
-                            showTitle: true,
-                            useDottedBorder: true,
+                                ],
+                              ),
+                              _isUploading
+                                  ? Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 40,
+                                          height: 40,
+                                          child: CircularProgressIndicator(
+                                            value: _uploadProgress,
+                                            strokeWidth: 3,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Uploading... ${(_uploadProgress * 100).toStringAsFixed(0)}%\n${StorageService.formatStorageSize(_uploadedBytes)} / ${StorageService.formatStorageSize(_totalUploadBytes)}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_circle_rounded,
+                                          size: 40,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Add Documents',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineSmall
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                            ],
                           ),
                         ),
-                        Expanded(
-                          child: SizedBox(
-                            height: 1.414 * _documentCardWidth,
-                            child: StreamBuilder<List<TripDocument>>(
-                              stream: _documentsStream,
-                              builder: (context, snapshot) {
-                                final documents = snapshot.data ?? _documents;
-
-                                return ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: documents.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(width: 16),
-                                  itemBuilder: (context, index) =>
-                                      _DocumentCard(
-                                    document: documents[index],
-                                    showTitle: false,
-                                  ),
-                                );
-                              },
+                      )
+                    : Row(
+                        spacing: 16,
+                        children: [
+                          InkWell(
+                            onTap:
+                                _isUploading ? null : _pickAndUploadDocuments,
+                            borderRadius: BorderRadius.circular(20),
+                            child: _DocumentCard(
+                              title: 'Add Documents',
+                              icon: Icons.add_circle_rounded,
+                              showTitle: true,
+                              useDottedBorder: true,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-              _AddDetailCard(
-                key: const ValueKey('add-flight-detail-card'),
-                title: 'Add Flight Details',
-                image: 'assets/images/flight.jpg',
-                onTap: () {},
-              ),
-              _AddDetailCard(
-                key: const ValueKey('add-hotel-detail-card'),
-                title: 'Add Hotel Info',
-                image: 'assets/images/hotel.jpg',
-                onTap: () {},
-              ),
-              _AddDetailCard(
-                key: const ValueKey('add-rental-car-detail-card'),
-                title: 'Add Rental Car Details',
-                image: 'assets/images/rental_car.jpg',
-                onTap: () {},
-                isComingSoon: true,
-              ),
-              _AddDetailCard(
-                key: const ValueKey('add-train-detail-card'),
-                title: 'Add Train Booking',
-                image: 'assets/images/train.jpg',
-                onTap: () {},
-                isComingSoon: true,
-              ),
-              _AddDetailCard(
-                key: const ValueKey('add-cruise-detail-card'),
-                title: 'Add Cruise Booking',
-                image: 'assets/images/cruise.jpg',
-                onTap: () {},
-                isComingSoon: true,
-              ),
-            ],
+                          Expanded(
+                            child: SizedBox(
+                              height: 1.414 * _documentCardWidth,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _documents.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 16),
+                                itemBuilder: (context, index) => _DocumentCard(
+                                  document: _documents[index],
+                                  showTitle: false,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                // Flight details section - conditional based on flight documents
+                _flightDocuments.isNotEmpty
+                    ? _FlightDetailsSection(
+                        tripId: widget.tripId,
+                        flightDocuments: _flightDocuments,
+                      )
+                    : _AddDetailCard(
+                        key: const ValueKey('add-flight-detail-card'),
+                        title: 'Add Flight Details',
+                        image: 'assets/images/flight.jpg',
+                        expandedContent: const SizedBox(),
+                      ),
+                _AddDetailCard(
+                  key: const ValueKey('add-hotel-detail-card'),
+                  title: 'Add Hotel Info',
+                  image: 'assets/images/hotel.jpg',
+                  expandedContent: SizedBox(),
+                ),
+                _AddDetailCard(
+                  key: const ValueKey('add-rental-car-detail-card'),
+                  title: 'Add Rental Car Details',
+                  image: 'assets/images/rental_car.jpg',
+                  isComingSoon: true,
+                ),
+                _AddDetailCard(
+                  key: const ValueKey('add-train-detail-card'),
+                  title: 'Add Train Booking',
+                  image: 'assets/images/train.jpg',
+                  isComingSoon: true,
+                ),
+                _AddDetailCard(
+                  key: const ValueKey('add-cruise-detail-card'),
+                  title: 'Add Cruise Booking',
+                  image: 'assets/images/cruise.jpg',
+                  isComingSoon: true,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -460,13 +458,13 @@ class _AddDetailCard extends StatefulWidget {
     super.key,
     required this.title,
     required this.image,
-    required this.onTap,
+    this.expandedContent,
     this.isComingSoon = false,
   });
 
   final String title;
   final String image;
-  final VoidCallback onTap;
+  final Widget? expandedContent;
   final bool isComingSoon;
 
   @override
@@ -475,31 +473,42 @@ class _AddDetailCard extends StatefulWidget {
 
 class _AddDetailCardState extends State<_AddDetailCard> {
   bool _isHovering = false;
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
+    final hasExpandedContent = widget.expandedContent != null;
     return InkWell(
+      focusColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       onHover: widget.isComingSoon
           ? null
           : (value) => setState(() => _isHovering = value),
-      onTap: widget.isComingSoon ? null : widget.onTap,
+      onTap: widget.isComingSoon || !hasExpandedContent
+          ? null
+          : () => setState(() => _isExpanded = !_isExpanded),
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
-        duration: 200.ms,
+        duration: 300.ms,
         curve: Curves.easeInOut,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: DarkModeColors.darkOnPrimary
-              .withValues(alpha: widget.isComingSoon ? 0.12 : 0.8),
-          image: DecorationImage(
-            image: AssetImage(widget.image),
-            fit: BoxFit.cover,
-            opacity: widget.isComingSoon
-                ? 0.2
-                : _isHovering
-                    ? 0.6
-                    : 0.35,
-          ),
+          color: _isExpanded
+              ? Theme.of(context).colorScheme.surface
+              : DarkModeColors.darkOnPrimary
+                  .withValues(alpha: widget.isComingSoon ? 0.12 : 0.8),
+          image: _isExpanded
+              ? null
+              : DecorationImage(
+                  image: AssetImage(widget.image),
+                  fit: BoxFit.cover,
+                  opacity: widget.isComingSoon
+                      ? 0.2
+                      : _isHovering
+                          ? 0.6
+                          : 0.35,
+                ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: widget.isComingSoon
               ? null
@@ -511,42 +520,45 @@ class _AddDetailCardState extends State<_AddDetailCard> {
                   ),
                 ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              Opacity(
-                opacity: widget.isComingSoon ? 0.4 : 1.0,
-                child: Icon(
-                  Icons.add_circle_rounded,
-                  size: 40,
-                  color: Colors.white.withValues(alpha: 0.8),
+        child: _isExpanded && hasExpandedContent
+            ? widget.expandedContent
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Opacity(
+                      opacity: widget.isComingSoon ? 0.4 : 1.0,
+                      child: Icon(
+                        Icons.add_circle_rounded,
+                        size: 40,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Opacity(
+                      opacity: widget.isComingSoon ? 0.4 : 1.0,
+                      child: Text(
+                        widget.title,
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                    ),
+                    if (widget.isComingSoon) ...[
+                      const Spacer(),
+                      Text(
+                        'COMING SOON',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Opacity(
-                opacity: widget.isComingSoon ? 0.4 : 1.0,
-                child: Text(
-                  widget.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-              if (widget.isComingSoon) ...[
-                const Spacer(),
-                Text(
-                  'COMING SOON',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -669,5 +681,565 @@ class _DocumentCard extends StatelessWidget {
 
     // Show original filename, truncated if too long
     return document!.originalFileName;
+  }
+}
+
+/// Flight details section that replaces the add card when flights are available
+class _FlightDetailsSection extends StatelessWidget {
+  const _FlightDetailsSection({
+    required this.tripId,
+    required this.flightDocuments,
+  });
+
+  final String tripId;
+  final List<TripDocument> flightDocuments;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Text(
+              'Flight Details',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '${flightDocuments.length} document${flightDocuments.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Flight documents list
+        ...flightDocuments.asMap().entries.map((entry) {
+          final document = entry.value;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _FlightDocumentDisplay(
+              documentId: document.id,
+              tripId: tripId,
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+/// Loads and displays flight info from subcollections using stream listeners
+class _FlightDocumentDisplay extends StatefulWidget {
+  const _FlightDocumentDisplay({
+    required this.tripId,
+    required this.documentId,
+  });
+
+  final String tripId;
+  final String documentId;
+
+  @override
+  State<_FlightDocumentDisplay> createState() => _FlightDocumentDisplayState();
+}
+
+class _FlightDocumentDisplayState extends State<_FlightDocumentDisplay> {
+  List<FlightInformation> _flights = [];
+  bool _isLoading = true;
+  String? _error;
+  late Stream<List<FlightInformation>> _flightInfoStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupFlightInfoStream();
+  }
+
+  void _setupFlightInfoStream() {
+    _flightInfoStream = DocumentService.firestore
+        .collection('trips')
+        .doc(widget.tripId)
+        .collection('documents')
+        .doc(widget.documentId)
+        .collection('flight_info')
+        .orderBy('flight_index')
+        .snapshots()
+        .map((snapshot) {
+      final flights = <FlightInformation>[];
+      for (final doc in snapshot.docs) {
+        try {
+          final flightInfo = FlightInformation.fromFirestore(doc.data());
+          flights.add(flightInfo);
+        } catch (e) {
+          logPrint('⚠️ Error parsing flight ${doc.id}: $e');
+        }
+      }
+      return flights;
+    });
+
+    _flightInfoStream.listen(
+      (flights) {
+        if (mounted) {
+          setState(() {
+            _flights = flights;
+            _isLoading = false;
+            _error = null;
+          });
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() {
+            _error = error.toString();
+            _isLoading = false;
+          });
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return SizedBox();
+    }
+
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Text(
+          'Error loading flight information',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+        ),
+      );
+    }
+
+    if (_flights.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Text(
+          'Flight information is being processed...',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+              ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _flights.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (_, index) {
+        final flightInfo = _flights[index];
+        return _FlightInfoDisplay(flightInfo: flightInfo);
+      },
+    );
+  }
+}
+
+/// Individual flight display matching the mockup design
+class _FlightInfoDisplay extends StatelessWidget {
+  const _FlightInfoDisplay({
+    required this.flightInfo,
+  });
+
+  final FlightInformation flightInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              children: [
+                // Flight header (airline and flight number)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      flightInfo.airline ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                    ),
+                    SizedBox(
+                      height: 16,
+                      child: VerticalDivider(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                        thickness: 1,
+                        width: 16,
+                      ),
+                    ),
+                    if (flightInfo.flightNumber != null)
+                      Text(
+                        flightInfo.flightNumber!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.5),
+                            ),
+                      ),
+                  ],
+                ),
+                // Flight route with airplane icon
+                Row(
+                  children: [
+                    Text(
+                      flightInfo.originCode ?? '',
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 40,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Container(
+                                width: double.infinity,
+                                height: 1,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          Transform.rotate(
+                            angle: pi / 2,
+                            child: Icon(
+                              Icons.flight_rounded,
+                              size: 40,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Container(
+                                width: double.infinity,
+                                height: 1,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      flightInfo.destinationCode ?? '',
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 40,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                    ),
+                  ],
+                ),
+                // Origin and destination place names
+                Row(
+                  children: [
+                    // Origin
+                    Expanded(
+                      child: Text(
+                        flightInfo.originPlaceName ?? '',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                      ),
+                    ),
+                    // Destination
+                    Expanded(
+                      child: Text(
+                        flightInfo.destinationPlaceName ?? '',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Flight times
+                Row(
+                  children: [
+                    // Departure time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (flightInfo.departureTime != null)
+                            Text(
+                              _formatTime(flightInfo.departureTime!,
+                                  isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
+                          if (flightInfo.departureTime != null)
+                            Text(
+                              _formatDate(flightInfo.departureTime!,
+                                  isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Next day indicator (if applicable)
+                    if (_isNextDay()) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '+1',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 16,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Next day',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
+
+                    // Arrival time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (flightInfo.arrivalTime != null)
+                            Text(
+                              _formatTime(flightInfo.arrivalTime!, isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
+                          if (flightInfo.arrivalTime != null)
+                            Text(
+                              _formatDate(flightInfo.arrivalTime!, isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
+                              textAlign: TextAlign.end,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Additional flight details
+          if (_hasAdditionalDetails()) ...[
+            Divider(
+              color: Theme.of(context).colorScheme.outline,
+              thickness: 1.5,
+              height: 1.5,
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _buildAdditionalDetails(context),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _isNextDay() {
+    if (flightInfo.departureTime == null || flightInfo.arrivalTime == null) {
+      return false;
+    }
+
+    final depDate = flightInfo.departureTime!;
+    final arrDate = flightInfo.arrivalTime!;
+
+    return arrDate.day != depDate.day || arrDate.month != depDate.month;
+  }
+
+  bool _hasAdditionalDetails() {
+    return flightInfo.seat != null ||
+        flightInfo.gate != null ||
+        flightInfo.terminal != null ||
+        flightInfo.confirmationNumber != null ||
+        flightInfo.passengerName != null ||
+        flightInfo.classOfService != null;
+  }
+
+  Widget _buildAdditionalDetails(BuildContext context) {
+    final details = <String, String?>{
+      'Seat': flightInfo.seat,
+      'Gate': flightInfo.gate,
+      'Terminal': flightInfo.terminal,
+      'Class': flightInfo.classOfService,
+      'PNR': flightInfo.confirmationNumber,
+      'Passenger': flightInfo.passengerName,
+    };
+
+    final nonEmptyDetails = details.entries
+        .where((entry) => entry.value != null && entry.value!.isNotEmpty)
+        .toList();
+
+    return Wrap(
+      spacing: 20,
+      runSpacing: 12,
+      alignment: WrapAlignment.spaceBetween,
+      children: nonEmptyDetails.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              entry.key,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              entry.value!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  String _formatTime(DateTime dateTime, {bool isUtc = false}) {
+    final formatter = DateFormat('h:mm a');
+    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
+  }
+
+  String _formatDate(DateTime dateTime, {bool isUtc = false}) {
+    final formatter = DateFormat('EEE, MMM dd');
+    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
   }
 }
