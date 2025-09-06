@@ -63,12 +63,12 @@ class _VisitPlacesSelectorViewState extends State<VisitPlacesSelectorView> {
       _isLoadingFromCache =
           cacheStats['cached'] == true && cacheStats['is_expired'] != true;
 
-      logPrint('📊 Cache stats: $cacheStats');
+      logPrint('🏛️ -> Cache stats: $cacheStats');
       if (_isLoadingFromCache) {
         logPrint(
-            '⚡ Loading from cache (${cacheStats['place_count']} places, ${cacheStats['age_days']} days old)');
+            '🏛️ -> ⚡ Loading from cache (${cacheStats['place_count']} places, ${cacheStats['age_days']} days old)');
       } else {
-        logPrint('📡 Loading from Places API (cache miss or expired)');
+        logPrint('🏛️ -> 📡 Loading from Places API (cache miss or expired)');
       }
 
       // Use cache-first approach
@@ -83,10 +83,10 @@ class _VisitPlacesSelectorViewState extends State<VisitPlacesSelectorView> {
           _isLoading = false;
         });
 
-        logPrint('✅ Loaded ${places.length} popular places');
+        logPrint('🏛️ -> ✅ Loaded ${places.length} popular places');
       }
     } catch (e) {
-      logPrint('❌ Error loading popular places: $e');
+      logPrint('🏛️ -> ❌ Error loading popular places: $e');
       if (mounted) {
         setState(() {
           _error = 'Failed to load popular places';

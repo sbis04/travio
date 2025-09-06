@@ -1,5 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:travio/models/place.dart';
+import 'package:travio/services/place_photo_cache_service.dart';
 import 'package:travio/utils/utils.dart';
 
 class PlacesService {
@@ -26,8 +27,27 @@ class PlacesService {
     }
   }
 
-  // Get place photos using Firebase Cloud Function
+  // Get place photos using cache-first approach
   static Future<List<String>> getPlacePhotos({
+    required String placeId,
+    int maxPhotos = 20,
+    int maxWidth = 800,
+  }) async {
+    try {
+      // Use cache service for cost optimization
+      return await PlacePhotoCacheService.getPlacePhotos(
+        placeId: placeId,
+        maxPhotos: maxPhotos,
+        maxWidth: maxWidth,
+      );
+    } catch (e) {
+      logPrint('❌ Error in cached getPlacePhotos: $e');
+      throw Exception('Error getting place photos: $e');
+    }
+  }
+
+  // Get place photos directly from API (internal use by cache service)
+  static Future<List<String>> getPlacePhotosFromAPI({
     required String placeId,
     int maxPhotos = 20,
     int maxWidth = 800,

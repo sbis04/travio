@@ -20,12 +20,13 @@ class VisitPlacesCacheService {
       // First, try to get from cache
       final cachedPlaces = await _getCachedPlaces(placeId);
       if (cachedPlaces.isNotEmpty) {
-        logPrint('✅ Found ${cachedPlaces.length} cached places for: $placeId');
+        logPrint(
+            '🏛️ -> ✅ Found ${cachedPlaces.length} cached places for: $placeId');
         return cachedPlaces;
       }
 
       // Cache miss - fetch from Places API
-      logPrint('📡 Cache miss, fetching from Places API for: $placeId');
+      logPrint('🏛️ -> 📡 Cache miss, fetching from Places API for: $placeId');
       final apiPlaces = await PlacesService.getPopularPlaces(
         placeId: placeId,
         maxResults: maxResults,
@@ -34,12 +35,12 @@ class VisitPlacesCacheService {
       // Cache the results for future use
       if (apiPlaces.isNotEmpty) {
         await _cachePlaces(placeId, apiPlaces);
-        logPrint('💾 Cached ${apiPlaces.length} places for future use');
+        logPrint('🏛️ -> 💾 Cached ${apiPlaces.length} places for future use');
       }
 
       return apiPlaces;
     } catch (e) {
-      logPrint('❌ Error in getPopularPlaces: $e');
+      logPrint('🏛️ -> ❌ Error in getPopularPlaces: $e');
       rethrow;
     }
   }
@@ -54,7 +55,7 @@ class VisitPlacesCacheService {
           .get();
 
       if (!cacheDoc.exists) {
-        logPrint('🔍 No cache entry found for place: $placeId');
+        logPrint('🏛️ -> 🔍 No cache entry found for place: $placeId');
         return [];
       }
 
@@ -66,7 +67,7 @@ class VisitPlacesCacheService {
       const cacheValidityDays = 7;
       if (now.difference(cachedAt).inDays > cacheValidityDays) {
         logPrint(
-            '⏰ Cache expired for place: $placeId (${now.difference(cachedAt).inDays} days old)');
+            '🏛️ -> ⏰ Cache expired for place: $placeId (${now.difference(cachedAt).inDays} days old)');
         // Optionally delete expired cache
         await _deleteCachedPlaces(placeId);
         return [];
@@ -85,15 +86,15 @@ class VisitPlacesCacheService {
           final place = Place.fromFirestore(doc);
           places.add(place);
         } catch (e) {
-          logPrint('⚠️ Error parsing cached place ${doc.id}: $e');
+          logPrint('🏛️ -> ⚠️ Error parsing cached place ${doc.id}: $e');
           // Continue with other places
         }
       }
 
-      logPrint('✅ Retrieved ${places.length} places from cache');
+      logPrint('🏛️ -> ✅ Retrieved ${places.length} places from cache');
       return places;
     } catch (e) {
-      logPrint('❌ Error getting cached places: $e');
+      logPrint('🏛️ -> ❌ Error getting cached places: $e');
       return [];
     }
   }
@@ -101,7 +102,7 @@ class VisitPlacesCacheService {
   /// Cache places in Firestore for future use
   static Future<void> _cachePlaces(String placeId, List<Place> places) async {
     try {
-      logPrint('💾 Caching ${places.length} places for: $placeId');
+      logPrint('🏛️ -> 💾 Caching ${places.length} places for: $placeId');
 
       final batch = _firestore.batch();
 
@@ -126,9 +127,9 @@ class VisitPlacesCacheService {
       }
 
       await batch.commit();
-      logPrint('✅ Successfully cached ${places.length} places');
+      logPrint('🏛️ -> ✅ Successfully cached ${places.length} places');
     } catch (e) {
-      logPrint('❌ Error caching places: $e');
+      logPrint('🏛️ -> ❌ Error caching places: $e');
       // Don't rethrow - caching failure shouldn't break the flow
     }
   }
@@ -136,7 +137,7 @@ class VisitPlacesCacheService {
   /// Delete cached places (when expired or invalid)
   static Future<void> _deleteCachedPlaces(String placeId) async {
     try {
-      logPrint('🗑️ Deleting expired cache for: $placeId');
+      logPrint('🏛️ -> 🗑️ Deleting expired cache for: $placeId');
 
       final batch = _firestore.batch();
 
@@ -158,9 +159,9 @@ class VisitPlacesCacheService {
       batch.delete(cacheDocRef);
 
       await batch.commit();
-      logPrint('✅ Deleted expired cache');
+      logPrint('🏛️ -> ✅ Deleted expired cache');
     } catch (e) {
-      logPrint('❌ Error deleting cached places: $e');
+      logPrint('🏛️ -> ❌ Error deleting cached places: $e');
     }
   }
 
@@ -170,7 +171,7 @@ class VisitPlacesCacheService {
     int maxResults = 20,
   }) async {
     try {
-      logPrint('🔄 Force refreshing cache for: $placeId');
+      logPrint('🏛️ -> 🔄 Force refreshing cache for: $placeId');
 
       // Delete existing cache
       await _deleteCachedPlaces(placeId);
@@ -188,7 +189,7 @@ class VisitPlacesCacheService {
 
       return apiPlaces;
     } catch (e) {
-      logPrint('❌ Error refreshing cache: $e');
+      logPrint('🏛️ -> ❌ Error refreshing cache: $e');
       rethrow;
     }
   }
@@ -222,7 +223,7 @@ class VisitPlacesCacheService {
         'is_expired': ageDays > 7,
       };
     } catch (e) {
-      logPrint('❌ Error getting cache stats: $e');
+      logPrint('🏛️ -> ❌ Error getting cache stats: $e');
       return {
         'error': e.toString(),
       };
@@ -232,7 +233,7 @@ class VisitPlacesCacheService {
   /// Clear all cached places (useful for maintenance)
   static Future<void> clearAllCache() async {
     try {
-      logPrint('🗑️ Clearing all visit places cache...');
+      logPrint('🏛️ -> 🗑️ Clearing all visit places cache...');
 
       // Get all cache documents
       final cacheSnapshot =
@@ -258,9 +259,9 @@ class VisitPlacesCacheService {
       }
 
       await batch.commit();
-      logPrint('✅ Cleared cache: $deletedCount documents deleted');
+      logPrint('🏛️ -> ✅ Cleared cache: $deletedCount documents deleted');
     } catch (e) {
-      logPrint('❌ Error clearing cache: $e');
+      logPrint('🏛️ -> ❌ Error clearing cache: $e');
       rethrow;
     }
   }
