@@ -528,6 +528,28 @@ Respond with ONLY the category name (lowercase, no explanation or additional tex
                     }
                 }
 
+                // If it's a hotel document, extract accommodation information
+                if (documentType === "hotel") {
+                    logger.info(`🏨 Extracting hotel information from: ${fileName}`);
+                    try {
+                        const extractionResult = await extractHotelInformation(imageData, fileName);
+                        if (extractionResult && extractionResult.accommodations && extractionResult.accommodations.length > 0) {
+                            logger.info(`✅ Extracted ${extractionResult.accommodations.length} accommodation(s) from document`);
+
+                            // Store multiple accommodations in subcollections
+                            await storeMultipleAccommodationInfoSubcollections(
+                                tripId,
+                                documentId,
+                                extractionResult.accommodations,
+                                extractionResult.bookingReference
+                            );
+                        }
+                    } catch (hotelError) {
+                        logger.warn(`⚠️ Failed to extract hotel info: ${hotelError.message}`);
+                        // Continue with classification even if hotel extraction fails
+                    }
+                }
+
                 await admin.firestore()
                     .collection("trips")
                     .doc(tripId)
@@ -966,6 +988,294 @@ async function getBasicFlightData(flightData) {
     } catch (error) {
         logger.warn(`⚠️ Basic flight data error: ${error.message}`);
         return null;
+    }
+}
+
+// Extract hotel information from hotel documents using Gemini
+async function extractHotelInformation(imageData, fileName) {
+    try {
+        const { GoogleGenerativeAI } = require("@google/generative-ai");
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+        if (!GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY not available for hotel extraction");
+        }
+
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const extractionPrompt = `Extract ALL hotel/accommodation information from this booking confirmation/hotel voucher image.
+This document may contain MULTIPLE hotel bookings (multi-city trips, extended stays).
+
+Return a JSON object with an array of accommodations:
+
+{
+  "accommodations": [
+    {
+      "hotel_name": "exact hotel name as shown (e.g., Taj Palace, Marriott Hotel)",
+      "address": "complete hotel address",
+      "check_in_date": "check-in date and time in ISO format YYYY-MM-DDTHH:MM:SS",
+      "check_out_date": "check-out date and time in ISO format YYYY-MM-DDTHH:MM:SS", 
+      "reservation_number": "reservation/booking reference number",
+      "confirmation_number": "confirmation number if different from reservation",
+      "guest_name": "primary guest name",
+      "room_type": "room type (e.g., Deluxe Room, Suite, Standard)",
+      "room_number": "room number if available",
+      "number_of_guests": "number of guests (as number)",
+      "number_of_nights": "number of nights (as number)",
+      "hotel_chain": "hotel chain/brand (e.g., Marriott, Hilton, Taj)",
+      "phone_number": "hotel contact number",
+      "email": "hotel email if available",
+      "total_amount": "total booking amount (as number)",
+      "currency": "currency code (e.g., USD, INR, EUR)",
+      "cancellation_policy": "cancellation policy details",
+      "special_requests": "special requests or notes"
+    }
+  ],
+  "booking_reference": "overall booking reference if different from individual hotels",
+  "total_accommodations": "number of hotel bookings in this document"
+}
+
+CRITICAL TIME CONVERSION EXAMPLES:
+- "Check-in: 15:00 hrs 24 Jul" → "2025-07-24T15:00:00"
+- "Check-out: 11:00 hrs 27 Jul" → "2025-07-27T11:00:00"
+- "3:00 PM July 24" → "2025-07-24T15:00:00"
+
+CRITICAL INSTRUCTIONS:
+- Look for MULTIPLE hotel bookings in the same document (multi-city trips)
+- Extract each hotel as a separate object in the "accommodations" array
+- Extract hotel names EXACTLY as they appear
+- Use complete address including city, state/region, country
+- Convert check-in/out times to YYYY-MM-DDTHH:MM:SS format
+- Extract numeric values for guests, nights, and amounts (no currency symbols)
+- Return ONLY valid JSON, no additional text or explanations
+- Use null for any missing fields
+- If only one hotel found, still return it as an array with one element`;
+
+        logger.info(`🔍 Analyzing hotel document with Gemini...`);
+
+        const geminiResult = await model.generateContent([extractionPrompt, imageData]);
+        const response = await geminiResult.response;
+        let extractedText = response.text().trim();
+
+        // Clean up the response to ensure valid JSON
+        extractedText = extractedText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+
+        logger.info(`📄 Raw hotel extraction result: ${extractedText}`);
+
+        // Parse the JSON response
+        let extractedData;
+        try {
+            extractedData = JSON.parse(extractedText);
+            logger.info(`🎯 Gemini extracted hotel data: ${JSON.stringify(extractedData, null, 2)}`);
+        } catch (parseError) {
+            logger.warn(`⚠️ Failed to parse JSON response: ${parseError.message}`);
+            logger.warn(`📄 Raw response: ${extractedText}`);
+            return null;
+        }
+
+        // Validate and process multiple accommodations
+        const accommodations = extractedData.accommodations || [];
+        if (!Array.isArray(accommodations) || accommodations.length === 0) {
+            logger.warn(`⚠️ No accommodations found in extracted data`);
+            return null;
+        }
+
+        logger.info(`🏨 Found ${accommodations.length} accommodation(s) in document`);
+
+        // Process each accommodation individually
+        const processedAccommodations = [];
+        for (let i = 0; i < accommodations.length; i++) {
+            const accommodationData = accommodations[i];
+            logger.info(`🔄 Processing accommodation ${i + 1}/${accommodations.length}: ${accommodationData.hotel_name}`);
+
+            try {
+                const enhancedAccommodation = await enhanceAccommodationData(accommodationData);
+                if (enhancedAccommodation) {
+                    processedAccommodations.push({
+                        accommodationData: enhancedAccommodation,
+                        accommodationIndex: i
+                    });
+                }
+            } catch (accommodationError) {
+                logger.warn(`⚠️ Error processing accommodation ${i + 1}: ${accommodationError.message}`);
+                // Continue with other accommodations
+            }
+        }
+
+        return {
+            accommodations: processedAccommodations,
+            bookingReference: extractedData.booking_reference,
+            totalAccommodations: extractedData.total_accommodations || accommodations.length
+        };
+
+    } catch (error) {
+        logger.error(`❌ Error extracting hotel information: ${error.message}`);
+        throw error;
+    }
+}
+
+// Enhance accommodation data with Places API for hotel location
+async function enhanceAccommodationData(accommodationData) {
+    try {
+        logger.info(`🌍 Enhancing accommodation data with hotel location...`);
+
+        const enhanced = { ...accommodationData };
+
+        // Convert string dates to Firestore Timestamps
+        if (enhanced.check_in_date && typeof enhanced.check_in_date === 'string') {
+            try {
+                const checkInDate = new Date(enhanced.check_in_date);
+                if (!isNaN(checkInDate.getTime())) {
+                    enhanced.check_in_date = admin.firestore.Timestamp.fromDate(checkInDate);
+                    logger.info(`📅 Stored check-in date: ${checkInDate.toISOString()}`);
+                } else {
+                    logger.warn(`⚠️ Invalid check-in date: ${enhanced.check_in_date}`);
+                    enhanced.check_in_date = null;
+                }
+            } catch (dateError) {
+                logger.warn(`⚠️ Error converting check-in date: ${dateError.message}`);
+                enhanced.check_in_date = null;
+            }
+        }
+
+        if (enhanced.check_out_date && typeof enhanced.check_out_date === 'string') {
+            try {
+                const checkOutDate = new Date(enhanced.check_out_date);
+                if (!isNaN(checkOutDate.getTime())) {
+                    enhanced.check_out_date = admin.firestore.Timestamp.fromDate(checkOutDate);
+                    logger.info(`📅 Stored check-out date: ${checkOutDate.toISOString()}`);
+                } else {
+                    logger.warn(`⚠️ Invalid check-out date: ${enhanced.check_out_date}`);
+                    enhanced.check_out_date = null;
+                }
+            } catch (dateError) {
+                logger.warn(`⚠️ Error converting check-out date: ${dateError.message}`);
+                enhanced.check_out_date = null;
+            }
+        }
+
+        // Add extracted timestamp
+        enhanced.extracted_at = admin.firestore.Timestamp.now();
+
+        // Get hotel location from Places API
+        if (enhanced.hotel_name) {
+            const hotelLocation = await findHotelByName(enhanced.hotel_name, enhanced.address);
+            if (hotelLocation) {
+                enhanced.place_id = hotelLocation.place_id;
+                enhanced.address = hotelLocation.address || enhanced.address;
+                logger.info(`✅ Found hotel location: ${hotelLocation.name} (${hotelLocation.place_id})`);
+            }
+        }
+
+        logger.info(`✅ Enhanced accommodation data: ${enhanced.hotel_name}`);
+        return enhanced;
+
+    } catch (error) {
+        logger.warn(`⚠️ Failed to enhance accommodation data: ${error.message}`);
+        // Return original data even if enhancement fails
+        return {
+            ...accommodationData,
+            extracted_at: admin.firestore.Timestamp.now(),
+        };
+    }
+}
+
+// Find hotel information using Places API
+async function findHotelByName(hotelName, hotelAddress) {
+    try {
+        logger.info(`🔍 Finding hotel location for: ${hotelName}`);
+
+        // Create search query with hotel name and address
+        const searchQuery = hotelAddress
+            ? `${hotelName} ${hotelAddress}`
+            : hotelName;
+
+        const response = await fetch(`${PLACES_BASE_URL}/places:searchText`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating",
+            },
+            body: JSON.stringify({
+                textQuery: searchQuery,
+                includedType: "lodging",
+                maxResultCount: 3,
+            }),
+        });
+
+        if (!response.ok) {
+            logger.warn(`⚠️ Places API search failed: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        const places = data.places || [];
+
+        if (places.length === 0) {
+            logger.warn(`⚠️ No hotel found for: ${hotelName}`);
+            return null;
+        }
+
+        // Find the best match (usually the first result)
+        const hotel = places[0];
+        const hotelDisplayName = hotel.displayName && hotel.displayName.text ? hotel.displayName.text : hotelName;
+
+        logger.info(`✅ Found hotel: ${hotelDisplayName} (${hotel.id})`);
+
+        return {
+            place_id: hotel.id,
+            name: hotelDisplayName,
+            address: hotel.formattedAddress,
+            location: hotel.location,
+            rating: hotel.rating,
+        };
+
+    } catch (error) {
+        logger.warn(`⚠️ Error finding hotel ${hotelName}: ${error.message}`);
+        return null;
+    }
+}
+
+// Store multiple accommodations in organized subcollections
+async function storeMultipleAccommodationInfoSubcollections(tripId, documentId, accommodations, bookingReference) {
+    try {
+        logger.info(`🏨 Storing ${accommodations.length} accommodation(s) info for document: ${documentId}`);
+
+        const batch = admin.firestore().batch();
+        const documentRef = admin.firestore()
+            .collection("trips")
+            .doc(tripId)
+            .collection("documents")
+            .doc(documentId);
+
+        // Store each accommodation as a separate document in accommodation_info subcollection
+        for (const accommodation of accommodations) {
+            const { accommodationData, accommodationIndex } = accommodation;
+
+            // Create a random document ID for each accommodation
+            const accommodationDocRef = documentRef.collection("accommodation_info").doc();
+
+            // Add accommodation index and booking reference to accommodation data
+            const accommodationWithMetadata = {
+                ...accommodationData,
+                accommodation_index: accommodationIndex,
+                booking_reference: bookingReference,
+                document_id: documentId,
+                created_at: admin.firestore.Timestamp.now(),
+            };
+
+            batch.set(accommodationDocRef, accommodationWithMetadata);
+            logger.info(`🏨 Adding accommodation ${accommodationIndex + 1}: ${accommodationData.hotel_name} (${accommodationDocRef.id})`);
+        }
+
+        await batch.commit();
+        logger.info(`✅ Successfully stored ${accommodations.length} accommodation(s)`);
+
+    } catch (error) {
+        logger.error(`❌ Error storing multiple accommodation info subcollections: ${error.message}`);
+        // Don't throw error - this is not critical for the main flow
     }
 }
 

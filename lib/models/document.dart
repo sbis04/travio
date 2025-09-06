@@ -1,5 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Helper method to safely parse DateTime from various formats
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+
+  try {
+    if (value is Timestamp) {
+      return value.toDate();
+    } else if (value is String) {
+      // Handle ISO string format as fallback
+      return DateTime.parse(value);
+    } else {
+      return null;
+    }
+  } catch (e) {
+    // Log error but don't throw - return null for invalid dates
+    print('⚠️ Error parsing DateTime: $e');
+    return null;
+  }
+}
+
 /// Flight information extracted from flight documents
 class FlightInformation {
   final String? flightNumber;
@@ -66,26 +86,6 @@ class FlightInformation {
       status: data['status'],
       extractedAt: _parseDateTime(data['extracted_at']),
     );
-  }
-
-  // Helper method to safely parse DateTime from various formats
-  static DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-
-    try {
-      if (value is Timestamp) {
-        return value.toDate();
-      } else if (value is String) {
-        // Handle ISO string format as fallback
-        return DateTime.parse(value);
-      } else {
-        return null;
-      }
-    } catch (e) {
-      // Log error but don't throw - return null for invalid dates
-      print('⚠️ Error parsing DateTime: $e');
-      return null;
-    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -163,6 +163,158 @@ class FlightInformation {
   @override
   String toString() {
     return 'FlightInformation(flight: $flightNumber, route: $originCode→$destinationCode, departure: $departureTime)';
+  }
+}
+
+/// Hotel/accommodation information extracted from hotel documents
+class AccommodationInformation {
+  final String? hotelName;
+  final String? address;
+  final String? placeId; // Places API place ID for hotel
+  final DateTime? checkInDate;
+  final DateTime? checkOutDate;
+  final String? reservationNumber;
+  final String? confirmationNumber;
+  final String? guestName;
+  final String? roomType;
+  final String? roomNumber;
+  final int? numberOfGuests;
+  final int? numberOfNights;
+  final String? hotelChain; // e.g., Marriott, Hilton
+  final String? phoneNumber;
+  final String? email;
+  final double? totalAmount;
+  final String? currency;
+  final String? cancellationPolicy;
+  final String? specialRequests;
+  final DateTime? extractedAt;
+
+  AccommodationInformation({
+    this.hotelName,
+    this.address,
+    this.placeId,
+    this.checkInDate,
+    this.checkOutDate,
+    this.reservationNumber,
+    this.confirmationNumber,
+    this.guestName,
+    this.roomType,
+    this.roomNumber,
+    this.numberOfGuests,
+    this.numberOfNights,
+    this.hotelChain,
+    this.phoneNumber,
+    this.email,
+    this.totalAmount,
+    this.currency,
+    this.cancellationPolicy,
+    this.specialRequests,
+    this.extractedAt,
+  });
+
+  factory AccommodationInformation.fromFirestore(Map<String, dynamic> data) {
+    return AccommodationInformation(
+      hotelName: data['hotel_name'],
+      address: data['address'],
+      placeId: data['place_id'],
+      checkInDate: _parseDateTime(data['check_in_date']),
+      checkOutDate: _parseDateTime(data['check_out_date']),
+      reservationNumber: data['reservation_number'],
+      confirmationNumber: data['confirmation_number'],
+      guestName: data['guest_name'],
+      roomType: data['room_type'],
+      roomNumber: data['room_number'],
+      numberOfGuests: data['number_of_guests'],
+      numberOfNights: data['number_of_nights'],
+      hotelChain: data['hotel_chain'],
+      phoneNumber: data['phone_number'],
+      email: data['email'],
+      totalAmount: data['total_amount']?.toDouble(),
+      currency: data['currency'],
+      cancellationPolicy: data['cancellation_policy'],
+      specialRequests: data['special_requests'],
+      extractedAt: _parseDateTime(data['extracted_at']),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'hotel_name': hotelName,
+      'address': address,
+      'place_id': placeId,
+      'check_in_date':
+          checkInDate != null ? Timestamp.fromDate(checkInDate!) : null,
+      'check_out_date':
+          checkOutDate != null ? Timestamp.fromDate(checkOutDate!) : null,
+      'reservation_number': reservationNumber,
+      'confirmation_number': confirmationNumber,
+      'guest_name': guestName,
+      'room_type': roomType,
+      'room_number': roomNumber,
+      'number_of_guests': numberOfGuests,
+      'number_of_nights': numberOfNights,
+      'hotel_chain': hotelChain,
+      'phone_number': phoneNumber,
+      'email': email,
+      'total_amount': totalAmount,
+      'currency': currency,
+      'cancellation_policy': cancellationPolicy,
+      'special_requests': specialRequests,
+      'extracted_at': extractedAt != null
+          ? Timestamp.fromDate(extractedAt!)
+          : FieldValue.serverTimestamp(),
+    };
+  }
+
+  AccommodationInformation copyWith({
+    String? hotelName,
+    String? address,
+    String? placeId,
+    DateTime? checkInDate,
+    DateTime? checkOutDate,
+    String? reservationNumber,
+    String? confirmationNumber,
+    String? guestName,
+    String? roomType,
+    String? roomNumber,
+    int? numberOfGuests,
+    int? numberOfNights,
+    String? hotelChain,
+    String? phoneNumber,
+    String? email,
+    double? totalAmount,
+    String? currency,
+    String? cancellationPolicy,
+    String? specialRequests,
+    DateTime? extractedAt,
+  }) {
+    return AccommodationInformation(
+      hotelName: hotelName ?? this.hotelName,
+      address: address ?? this.address,
+      placeId: placeId ?? this.placeId,
+      checkInDate: checkInDate ?? this.checkInDate,
+      checkOutDate: checkOutDate ?? this.checkOutDate,
+      reservationNumber: reservationNumber ?? this.reservationNumber,
+      confirmationNumber: confirmationNumber ?? this.confirmationNumber,
+      guestName: guestName ?? this.guestName,
+      roomType: roomType ?? this.roomType,
+      roomNumber: roomNumber ?? this.roomNumber,
+      numberOfGuests: numberOfGuests ?? this.numberOfGuests,
+      numberOfNights: numberOfNights ?? this.numberOfNights,
+      hotelChain: hotelChain ?? this.hotelChain,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      email: email ?? this.email,
+      totalAmount: totalAmount ?? this.totalAmount,
+      currency: currency ?? this.currency,
+      cancellationPolicy: cancellationPolicy ?? this.cancellationPolicy,
+      specialRequests: specialRequests ?? this.specialRequests,
+      extractedAt: extractedAt ?? this.extractedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'AccommodationInformation(hotel: $hotelName, dates: $checkInDate→$checkOutDate, reservation: $reservationNumber)';
   }
 }
 
