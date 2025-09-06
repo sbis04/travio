@@ -50,6 +50,41 @@ class AppHeader extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                // Preview badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Preview',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.5),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
                 const Spacer(),
                 if (!hideButtons) ...[
                   // Navigation
