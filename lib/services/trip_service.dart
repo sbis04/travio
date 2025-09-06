@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:travio/models/place.dart';
 import 'package:travio/models/trip.dart';
 import 'package:travio/services/auth_service.dart';
@@ -5,16 +6,25 @@ import 'package:travio/services/firestore_service.dart';
 import 'package:travio/utils/utils.dart';
 
 class TripService {
-  // Complete flow: Sign in anonymously + Create trip + Return trip ID
+  // Complete flow: Ensure user auth + Create trip + Return trip ID
   static Future<String?> createTripWithPlace(Place selectedPlace) async {
     try {
       logPrint('🚀 Starting trip creation flow for ${selectedPlace.name}...');
 
-      // Step 1: Sign in anonymously
-      final user = await AuthService.signInAnonymously();
+      // Step 1: Ensure user is authenticated (anonymous or otherwise)
+      User? user = AuthService.currentUser;
+
       if (user == null) {
-        logPrint('❌ Failed to sign in anonymously');
-        return null;
+        // No user signed in - sign in anonymously
+        logPrint('👤 No user signed in, creating anonymous user...');
+        user = await AuthService.signInAnonymously();
+        if (user == null) {
+          logPrint('❌ Failed to sign in anonymously');
+          return null;
+        }
+      } else {
+        logPrint(
+            '👤 Using existing user: ${user.uid} (anonymous: ${user.isAnonymous})');
       }
 
       // Step 2: Create trip document
@@ -27,6 +37,8 @@ class TripService {
         logPrint('🎉 Trip creation flow completed successfully!');
         logPrint('   Trip ID: $tripId');
         logPrint('   User UID: ${user.uid}');
+        logPrint(
+            '   User Type: ${user.isAnonymous ? 'Anonymous' : 'Authenticated'}');
         logPrint('   Destination: ${selectedPlace.name}');
 
         // Log user info for debugging

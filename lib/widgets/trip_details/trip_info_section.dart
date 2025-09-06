@@ -358,7 +358,9 @@ class _TripInfoSectionState extends State<TripInfoSection> {
                 isCurrentStep: _currentStep == 5,
                 title: 'Invite co-travelers',
                 subtitle:
-                    'Invite your friends and family to join you on your trip.',
+                    'Login or create an account to securely save the trip details. '
+                    'Currently this trip is public, sign in to an account to make it private.\n\n'
+                    'Invite your friends and family to join you on the trip.',
                 child: SizedBox(),
                 onStepTap: () {
                   setState(() => _currentStep = 5);
