@@ -521,6 +521,9 @@ Respond with ONLY the category name (lowercase, no explanation or additional tex
                                 extractionResult.flights,
                                 extractionResult.bookingReference
                             );
+
+                            // Update trip document with flight info flag
+                            await updateTripDocumentInfo(tripId, { has_flight_info: true });
                         }
                     } catch (flightError) {
                         logger.warn(`⚠️ Failed to extract flight info: ${flightError.message}`);
@@ -543,6 +546,9 @@ Respond with ONLY the category name (lowercase, no explanation or additional tex
                                 extractionResult.accommodations,
                                 extractionResult.bookingReference
                             );
+
+                            // Update trip document with hotel info flag
+                            await updateTripDocumentInfo(tripId, { has_hotel_info: true });
                         }
                     } catch (hotelError) {
                         logger.warn(`⚠️ Failed to extract hotel info: ${hotelError.message}`);
@@ -1275,6 +1281,37 @@ async function storeMultipleAccommodationInfoSubcollections(tripId, documentId, 
 
     } catch (error) {
         logger.error(`❌ Error storing multiple accommodation info subcollections: ${error.message}`);
+        // Don't throw error - this is not critical for the main flow
+    }
+}
+
+// Update trip document with document info flags
+async function updateTripDocumentInfo(tripId, updates) {
+    try {
+        logger.info(`📊 Updating trip document info for: ${tripId}`, updates);
+
+        const tripRef = admin.firestore().collection("trips").doc(tripId);
+
+        // Get current document_info or create new one
+        const tripDoc = await tripRef.get();
+        const currentData = tripDoc.data() || {};
+        const currentDocumentInfo = currentData.document_info || {};
+
+        // Merge the updates with existing document_info
+        const updatedDocumentInfo = {
+            ...currentDocumentInfo,
+            ...updates,
+            updated_at: admin.firestore.Timestamp.now(),
+        };
+
+        await tripRef.update({
+            document_info: updatedDocumentInfo,
+        });
+
+        logger.info(`✅ Trip document info updated: ${JSON.stringify(updatedDocumentInfo)}`);
+
+    } catch (error) {
+        logger.error(`❌ Error updating trip document info: ${error.message}`);
         // Don't throw error - this is not critical for the main flow
     }
 }

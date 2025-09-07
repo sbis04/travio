@@ -16,6 +16,7 @@ class Trip {
   final DateTime createdAt;
   final DateTime updatedAt;
   final TripStatus status;
+  final TripDocumentInfo documentInfo;
 
   Trip({
     required this.id,
@@ -32,6 +33,7 @@ class Trip {
     required this.createdAt,
     required this.updatedAt,
     this.status = TripStatus.planning,
+    this.documentInfo = const TripDocumentInfo(),
   });
 
   // Create Trip from Place
@@ -72,6 +74,7 @@ class Trip {
         'start_date': startDate != null ? Timestamp.fromDate(startDate!) : null,
         'end_date': endDate != null ? Timestamp.fromDate(endDate!) : null,
       },
+      'document_info': documentInfo.toFirestore(),
       'created_at': Timestamp.fromDate(createdAt),
       'updated_at': Timestamp.fromDate(updatedAt),
       'status': status.name,
@@ -103,6 +106,9 @@ class Trip {
         (status) => status.name == data['status'],
         orElse: () => TripStatus.planning,
       ),
+      documentInfo: data['document_info'] != null
+          ? TripDocumentInfo.fromFirestore(data['document_info'])
+          : const TripDocumentInfo(),
     );
   }
 
@@ -120,6 +126,7 @@ class Trip {
     DateTime? endDate,
     DateTime? updatedAt,
     TripStatus? status,
+    TripDocumentInfo? documentInfo,
   }) {
     return Trip(
       id: id,
@@ -136,6 +143,7 @@ class Trip {
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       status: status ?? this.status,
+      documentInfo: documentInfo ?? this.documentInfo,
     );
   }
 }
@@ -145,4 +153,55 @@ enum TripStatus {
   active,
   completed,
   cancelled,
+}
+
+/// Document information tracking for a trip
+class TripDocumentInfo {
+  final bool hasFlightInfo;
+  final bool hasHotelInfo;
+  final DateTime? updatedAt;
+
+  const TripDocumentInfo({
+    this.hasFlightInfo = false,
+    this.hasHotelInfo = false,
+    this.updatedAt,
+  });
+
+  // Convert to Firestore (using snake_case)
+  Map<String, dynamic> toFirestore() {
+    return {
+      'has_flight_info': hasFlightInfo,
+      'has_hotel_info': hasHotelInfo,
+      'updated_at': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+    };
+  }
+
+  // Create from Firestore (using snake_case)
+  factory TripDocumentInfo.fromFirestore(Map<String, dynamic> data) {
+    return TripDocumentInfo(
+      hasFlightInfo: data['has_flight_info'] ?? false,
+      hasHotelInfo: data['has_hotel_info'] ?? false,
+      updatedAt: data['updated_at'] != null
+          ? (data['updated_at'] as Timestamp).toDate()
+          : null,
+    );
+  }
+
+  // Copy with updated fields
+  TripDocumentInfo copyWith({
+    bool? hasFlightInfo,
+    bool? hasHotelInfo,
+    DateTime? updatedAt,
+  }) {
+    return TripDocumentInfo(
+      hasFlightInfo: hasFlightInfo ?? this.hasFlightInfo,
+      hasHotelInfo: hasHotelInfo ?? this.hasHotelInfo,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'TripDocumentInfo(hasFlightInfo: $hasFlightInfo, hasHotelInfo: $hasHotelInfo)';
+  }
 }
