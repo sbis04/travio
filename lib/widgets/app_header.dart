@@ -191,7 +191,9 @@ class AppHeader extends StatelessWidget {
 
   // Show authentication dialog
   static Future<void> _showAuthDialog(
-      BuildContext context, AuthMode mode) async {
+    BuildContext context,
+    AuthMode mode,
+  ) async {
     await showDialog<bool>(
       context: context,
       barrierDismissible: true,

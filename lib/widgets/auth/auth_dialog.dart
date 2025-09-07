@@ -35,7 +35,7 @@ class AuthDialog extends StatelessWidget {
             ),
           ],
         ),
-        child: AuthContent(),
+        child: AuthContent(initialMode: initialMode),
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0);
   }
