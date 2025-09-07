@@ -405,7 +405,11 @@ class _BuildItineraryViewState extends State<BuildItineraryView> {
                       duration: 300.ms,
                       curve: Curves.easeInOut,
                       child: _documents.isEmpty
-                          ? GestureDetector(
+                          ? InkWell(
+                              focusColor: Colors.transparent,
+                              hoverColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
+                              splashColor: Colors.transparent,
                               onTap:
                                   _isUploading ? null : _pickAndUploadDocuments,
                               child: Padding(

@@ -1019,7 +1019,10 @@ Return a JSON object with an array of accommodations:
   "accommodations": [
     {
       "hotel_name": "exact hotel name as shown (e.g., Taj Palace, Marriott Hotel)",
-      "address": "complete hotel address",
+      "address": "complete hotel address including city, state, country",
+      "city": "hotel city (e.g., New Delhi, Mumbai, Bangalore)",
+      "state_region": "state or region (e.g., Delhi, Maharashtra, Karnataka)",
+      "country": "country (e.g., India, USA, UK)",
       "check_in_date": "check-in date and time in ISO format YYYY-MM-DDTHH:MM:SS",
       "check_out_date": "check-out date and time in ISO format YYYY-MM-DDTHH:MM:SS", 
       "reservation_number": "reservation/booking reference number",
@@ -1170,7 +1173,11 @@ async function enhanceAccommodationData(accommodationData) {
             if (hotelLocation) {
                 enhanced.place_id = hotelLocation.place_id;
                 enhanced.address = hotelLocation.address || enhanced.address;
+                enhanced.latitude = hotelLocation.location?.latitude || null;
+                enhanced.longitude = hotelLocation.location?.longitude || null;
+                enhanced.rating = hotelLocation.rating || null;
                 logger.info(`✅ Found hotel location: ${hotelLocation.name} (${hotelLocation.place_id})`);
+                logger.info(`📍 Hotel coordinates: ${enhanced.latitude}, ${enhanced.longitude}`);
             }
         }
 

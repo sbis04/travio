@@ -171,6 +171,12 @@ class AccommodationInformation {
   final String? hotelName;
   final String? address;
   final String? placeId; // Places API place ID for hotel
+  final double? latitude; // Hotel latitude from Places API
+  final double? longitude; // Hotel longitude from Places API
+  final double? rating; // Hotel rating from Places API
+  final String? city;
+  final String? stateRegion;
+  final String? country;
   final DateTime? checkInDate;
   final DateTime? checkOutDate;
   final String? reservationNumber;
@@ -193,6 +199,12 @@ class AccommodationInformation {
     this.hotelName,
     this.address,
     this.placeId,
+    this.latitude,
+    this.longitude,
+    this.rating,
+    this.city,
+    this.stateRegion,
+    this.country,
     this.checkInDate,
     this.checkOutDate,
     this.reservationNumber,
@@ -217,6 +229,12 @@ class AccommodationInformation {
       hotelName: data['hotel_name'],
       address: data['address'],
       placeId: data['place_id'],
+      latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+      rating: data['rating']?.toDouble(),
+      city: data['city'],
+      stateRegion: data['state_region'],
+      country: data['country'],
       checkInDate: _parseDateTime(data['check_in_date']),
       checkOutDate: _parseDateTime(data['check_out_date']),
       reservationNumber: data['reservation_number'],
@@ -242,6 +260,12 @@ class AccommodationInformation {
       'hotel_name': hotelName,
       'address': address,
       'place_id': placeId,
+      'latitude': latitude,
+      'longitude': longitude,
+      'rating': rating,
+      'city': city,
+      'state_region': stateRegion,
+      'country': country,
       'check_in_date':
           checkInDate != null ? Timestamp.fromDate(checkInDate!) : null,
       'check_out_date':
