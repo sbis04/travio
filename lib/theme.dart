@@ -39,7 +39,7 @@ class DarkModeColors {
   static const darkInversePrimary = Color(0xFF2A9D8F);
   static const darkShadow = Color(0xFF000000);
   static const darkSurface = Color(0xFF1A2B2E); // Dark teal surface
-  static const darkOnSurface = Color(0xFF52C7B8); // Yellow text
+  static const darkOnSurface = Color(0xFFE0F2F1); // teal text
   static const darkAppBarBackground = Color(0xFF264653); // Darkest teal
 }
 
