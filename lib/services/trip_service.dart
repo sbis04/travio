@@ -28,9 +28,13 @@ class TripService {
       }
 
       // Step 2: Create trip document
+      // Set as public if user is anonymous, private if authenticated
+      final isPublic = user.isAnonymous;
+
       final tripId = await FirestoreService.createTrip(
         userUid: user.uid,
         selectedPlace: selectedPlace,
+        isPublic: isPublic,
       );
 
       if (tripId != null) {
@@ -39,6 +43,7 @@ class TripService {
         logPrint('   User UID: ${user.uid}');
         logPrint(
             '   User Type: ${user.isAnonymous ? 'Anonymous' : 'Authenticated'}');
+        logPrint('   Trip Visibility: ${isPublic ? 'Public' : 'Private'}');
         logPrint('   Destination: ${selectedPlace.name}');
 
         // Log user info for debugging
@@ -186,5 +191,47 @@ class TripService {
     } else {
       return await removeVisitPlace(tripId: tripId, placeId: place.placeId);
     }
+  }
+
+  // ========== TRIP OWNERSHIP MANAGEMENT ==========
+
+  // Link trip to authenticated user (convert from anonymous to authenticated)
+  static Future<bool> linkTripToCurrentUser(String tripId) async {
+    try {
+      final currentUser = AuthService.currentUser;
+      if (currentUser == null) {
+        logPrint('❌ No user signed in to link trip to');
+        return false;
+      }
+
+      if (currentUser.isAnonymous) {
+        logPrint('❌ Cannot link trip to anonymous user');
+        return false;
+      }
+
+      logPrint(
+          '🔗 Linking trip $tripId to current authenticated user: ${currentUser.uid}');
+
+      return await FirestoreService.linkTripToUser(
+        tripId: tripId,
+        newUserUid: currentUser.uid,
+      );
+    } catch (e) {
+      logPrint('❌ Error linking trip to current user: $e');
+      return false;
+    }
+  }
+
+  // Link trip to specific user with ownership verification
+  static Future<bool> linkTripToUser({
+    required String tripId,
+    required String newUserUid,
+    String? oldUserUid,
+  }) async {
+    return await FirestoreService.linkTripToUser(
+      tripId: tripId,
+      newUserUid: newUserUid,
+      oldUserUid: oldUserUid,
+    );
   }
 }

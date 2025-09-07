@@ -163,6 +163,7 @@ ThemeData get lightTheme => ThemeData(
         onSurface: LightModeColors.lightOnSurface,
         outline: const Color(0xFFE5E7EB),
       ),
+      scaffoldBackgroundColor: LightModeColors.lightSurface,
       brightness: Brightness.light,
       appBarTheme: AppBarTheme(
         backgroundColor: LightModeColors.lightAppBarBackground,
@@ -194,6 +195,7 @@ ThemeData get darkTheme => ThemeData(
         onSurface: DarkModeColors.darkOnSurface,
         outline: const Color(0xFF374151),
       ),
+      scaffoldBackgroundColor: DarkModeColors.darkSurface,
       brightness: Brightness.dark,
       appBarTheme: AppBarTheme(
         backgroundColor: DarkModeColors.darkAppBarBackground,

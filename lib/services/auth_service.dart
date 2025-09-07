@@ -54,10 +54,6 @@ class AuthService {
     try {
       logPrint('🔐 Starting Google Sign-In...');
 
-      // Check if user is currently anonymous
-      final currentUser = _auth.currentUser;
-      final isAnonymous = currentUser?.isAnonymous ?? false;
-
       // Trigger the Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
@@ -77,24 +73,7 @@ class AuthService {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
-      UserCredential userCredential;
-
-      if (isAnonymous && currentUser != null) {
-        // Convert anonymous user to Google user
-        logPrint('🔄 Converting anonymous user to Google user...');
-        try {
-          userCredential = await currentUser.linkWithCredential(credential);
-          logPrint('✅ Anonymous user converted to Google user');
-        } catch (e) {
-          logPrint('⚠️ Failed to link anonymous user, signing in normally: $e');
-          userCredential = await _auth.signInWithCredential(credential);
-        }
-      } else {
-        // Sign in with Google credential
-        userCredential = await _auth.signInWithCredential(credential);
-      }
-
+      final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
       if (user != null) {
         logPrint('✅ Google Sign-In successful: ${user.email}');

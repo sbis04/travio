@@ -14,14 +14,16 @@ class FirestoreService {
   static Future<String?> createTrip({
     required String userUid,
     required Place selectedPlace,
+    bool? isPublic, // Explicitly pass whether trip should be public
   }) async {
     try {
       logPrint('💾 Creating trip document for ${selectedPlace.name}...');
 
-      // Create trip from place
+      // Create trip from place with public flag
       final trip = Trip.fromPlace(
         userUid: userUid,
         place: selectedPlace,
+        isPublic: isPublic,
       );
 
       // Add to Firestore
@@ -128,6 +130,64 @@ class FirestoreService {
       return true;
     } catch (e) {
       logPrint('❌ Error deleting trip: $e');
+      return false;
+    }
+  }
+
+  // Link trip to authenticated user (transfer from anonymous to authenticated user)
+  static Future<bool> linkTripToUser({
+    required String tripId,
+    required String newUserUid,
+    String? oldUserUid,
+  }) async {
+    try {
+      logPrint('🔗 Linking trip $tripId to authenticated user: $newUserUid');
+
+      final tripRef = _firestore.collection(_tripsCollection).doc(tripId);
+
+      // Get current trip data to verify ownership
+      final tripDoc = await tripRef.get();
+      if (!tripDoc.exists) {
+        logPrint('❌ Trip not found: $tripId');
+        return false;
+      }
+
+      final tripData = tripDoc.data() as Map<String, dynamic>;
+      final currentUserUid = tripData['user_uid'];
+
+      // Verify that the current user owns this trip (if oldUserUid is provided)
+      if (oldUserUid != null && currentUserUid != oldUserUid) {
+        logPrint(
+            '❌ Trip ownership verification failed. Current owner: $currentUserUid, Expected: $oldUserUid');
+        return false;
+      }
+
+      // Check if the current trip is from an anonymous user (should be public)
+      final isCurrentlyPublic = tripData['is_public'] ?? true;
+      if (!isCurrentlyPublic) {
+        logPrint('⚠️ Warning: Linking a trip that is already private');
+      }
+
+      // Update trip with new user and make it private
+      await tripRef.update({
+        'user_uid': newUserUid,
+        'is_public': false, // Make trip private for authenticated user
+        'updated_at': FieldValue.serverTimestamp(),
+        'linked_at':
+            FieldValue.serverTimestamp(), // Track when linking occurred
+        'previous_user_uid':
+            currentUserUid, // Keep track of previous owner for audit
+      });
+
+      logPrint('✅ Trip successfully linked to authenticated user');
+      logPrint('   Trip ID: $tripId');
+      logPrint('   Previous User: $currentUserUid');
+      logPrint('   New User: $newUserUid');
+      logPrint('   Visibility: Public → Private');
+
+      return true;
+    } catch (e) {
+      logPrint('❌ Error linking trip to user: $e');
       return false;
     }
   }

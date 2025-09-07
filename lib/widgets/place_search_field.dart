@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:travio/models/place.dart';
 import 'package:travio/services/places_service.dart';
+import 'package:travio/widgets/app_textfield.dart';
 
 enum SelectionTrigger { mouseClick, enterKey }
 
@@ -458,53 +459,14 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
       link: _layerLink,
       child: Focus(
         onKeyEvent: _handleKeyEvent,
-        child: TextField(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          onChanged: _onSearchChanged,
-          onSubmitted: widget.onSubmitted,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.search,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: widget.focusNode.hasFocus
-                ? Theme.of(context).colorScheme.primary.withAlpha(40)
-                : Theme.of(context).colorScheme.outline.withAlpha(100),
+        child: AppTextField(
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            onChanged: _onSearchChanged,
+            onSubmitted: widget.onSubmitted,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.search,
             hintText: _isSearching ? 'Searching...' : widget.hintText,
-            hintStyle: TextStyle(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.6),
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 20,
-            ),
             suffixIcon: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ElevatedButton(
@@ -546,9 +508,98 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
                         ),
                       ),
               ),
-            ),
-          ),
-        ),
+            )),
+        // child: TextField(
+        //   controller: widget.controller,
+        //   focusNode: widget.focusNode,
+        //   onChanged: _onSearchChanged,
+        //   onSubmitted: widget.onSubmitted,
+        //   textCapitalization: TextCapitalization.words,
+        //   textInputAction: TextInputAction.search,
+        //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        //         color: Theme.of(context).colorScheme.onSurface,
+        //       ),
+        //   decoration: InputDecoration(
+        //     filled: true,
+        //     fillColor: widget.focusNode.hasFocus
+        //         ? Theme.of(context).colorScheme.primary.withAlpha(40)
+        //         : Theme.of(context).colorScheme.outline.withAlpha(100),
+        //     hintText: _isSearching ? 'Searching...' : widget.hintText,
+        //     hintStyle: TextStyle(
+        //       color: Theme.of(context)
+        //           .colorScheme
+        //           .onSurface
+        //           .withValues(alpha: 0.6),
+        //     ),
+        //     border: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(20),
+        //       borderSide: BorderSide(
+        //         color: Theme.of(context).colorScheme.outline,
+        //         width: 2,
+        //       ),
+        //     ),
+        //     enabledBorder: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(20),
+        //       borderSide: BorderSide(
+        //         color: Theme.of(context).colorScheme.outline,
+        //         width: 2,
+        //       ),
+        //     ),
+        //     focusedBorder: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(20),
+        //       borderSide: BorderSide(
+        //         color: Theme.of(context).colorScheme.primary,
+        //         width: 2,
+        //       ),
+        //     ),
+        //     contentPadding: const EdgeInsets.symmetric(
+        //       horizontal: 24,
+        //       vertical: 20,
+        //     ),
+        //     suffixIcon: Padding(
+        //       padding: const EdgeInsets.only(right: 8),
+        //       child: ElevatedButton(
+        //         onPressed: _isSearching ||
+        //                 widget.controller.text.isEmpty ||
+        //                 _selectedPlace == null
+        //             ? null
+        //             : () => widget.onSubmitted?.call(widget.controller.text),
+        //         style: ElevatedButton.styleFrom(
+        //           elevation: 2,
+        //           backgroundColor: Theme.of(context).colorScheme.primary,
+        //           disabledBackgroundColor:
+        //               Theme.of(context).colorScheme.primary.withAlpha(100),
+        //           padding: const EdgeInsets.symmetric(
+        //             horizontal: 24,
+        //             vertical: 16,
+        //           ),
+        //           shape: RoundedRectangleBorder(
+        //             borderRadius: BorderRadius.circular(15),
+        //           ),
+        //         ),
+        //         child: _isSearching
+        //             ? SizedBox(
+        //                 width: 16,
+        //                 height: 16,
+        //                 child: CircularProgressIndicator(
+        //                   strokeWidth: 2,
+        //                   valueColor: AlwaysStoppedAnimation<Color>(
+        //                     Theme.of(context).colorScheme.onPrimary,
+        //                   ),
+        //                 ),
+        //               )
+        //             : Text(
+        //                 'Start Planning',
+        //                 style: TextStyle(
+        //                   color: Theme.of(context).colorScheme.onPrimary,
+        //                   fontWeight: FontWeight.w600,
+        //                   fontSize: 14,
+        //                 ),
+        //               ),
+        //       ),
+        //     ),
+        //   ),
+        // ),
       ),
     );
   }

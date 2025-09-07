@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +24,7 @@ class AppHeader extends StatelessWidget {
           child: Container(
             height: kAppBarHeight,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
             child: Row(
               children: [
                 // Logo
@@ -90,131 +91,96 @@ class AppHeader extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (!hideButtons) ...[
-                  // Navigation
-                  if (Responsive.isDesktop(context)) ...[
-                    // _NavButton(
-                    //   text: 'Features',
-                    //   onPressed: () {
-                    //     // TODO: Scroll to features section or navigate to features page
-                    //   },
-                    // ),
-                    // const SizedBox(width: 24),
-                    // _NavButton(
-                    //   text: 'Pricing',
-                    //   onPressed: () {
-                    //     // TODO: Navigate to pricing page
-                    //   },
-                    // ),
-                    const SizedBox(width: 24),
-                    _NavButton(
-                      text: 'About',
-                      onPressed: () {
-                        print('🔗 About button clicked - navigating to /about');
-                        context.go('/about');
-                      },
-                    ),
-                    const SizedBox(width: 24),
-                    _NavButton(
-                      text: 'Contact',
-                      onPressed: () {
-                        print(
-                            '🔗 Contact button clicked - navigating to /contact');
-                        context.go('/contact');
-                      },
-                    ),
-                    const SizedBox(width: 32),
-                    // Theme toggle button
-                    IconButton(
-                      onPressed: () =>
-                          context.read<ThemeProvider>().toggleTheme(),
-                      icon: Icon(
-                        Theme.of(context).brightness == Brightness.light
-                            ? Icons.dark_mode_outlined
-                            : Icons.light_mode_outlined,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      tooltip: Theme.of(context).brightness == Brightness.light
-                          ? 'Switch to dark mode'
-                          : 'Switch to light mode',
-                    ),
-                    const SizedBox(width: 12),
-                    // Auth buttons - conditional based on auth state
-                    StreamBuilder<User?>(
-                      stream: AuthService.authStateChanges,
-                      builder: (context, snapshot) {
-                        final user = snapshot.data;
-                        final isAuthenticated =
-                            user != null && !user.isAnonymous;
-
-                        if (isAuthenticated) {
-                          // Show user menu when authenticated
-                          return _UserMenu(user: user);
-                        } else {
-                          // Show auth buttons when not authenticated
-                          return Row(
-                            children: [
-                              OutlinedButton(
-                                onPressed: () =>
-                                    _showAuthDialog(context, AuthMode.signIn),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                ),
-                                child: Text(
-                                  'Sign In',
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed: () =>
-                                    _showAuthDialog(context, AuthMode.signUp),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.primary,
-                                  foregroundColor:
-                                      Theme.of(context).colorScheme.onPrimary,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                ),
-                                child: const Text('Get Started'),
-                              ),
-                            ],
-                          );
-                        }
-                      },
-                    ),
-                  ] else ...[
-                    // Theme toggle button for mobile
-                    IconButton(
-                      onPressed: () =>
-                          context.read<ThemeProvider>().toggleTheme(),
-                      icon: Icon(
-                        Theme.of(context).brightness == Brightness.light
-                            ? Icons.dark_mode_outlined
-                            : Icons.light_mode_outlined,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      tooltip: Theme.of(context).brightness == Brightness.light
-                          ? 'Switch to dark mode'
-                          : 'Switch to light mode',
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: Icon(
-                        Icons.menu,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
+                  const SizedBox(width: 24),
+                  _NavButton(
+                    text: 'About',
+                    onPressed: () {
+                      print('🔗 About button clicked - navigating to /about');
+                      context.go('/about');
+                    },
+                  ),
+                  const SizedBox(width: 24),
+                  _NavButton(
+                    text: 'Contact',
+                    onPressed: () {
+                      print(
+                          '🔗 Contact button clicked - navigating to /contact');
+                      context.go('/contact');
+                    },
+                  ),
+                  const SizedBox(width: 32),
                 ],
+                // Theme toggle button
+                IconButton(
+                  focusColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  onPressed: () => context.read<ThemeProvider>().toggleTheme(),
+                  icon: Icon(
+                    Theme.of(context).brightness == Brightness.light
+                        ? Icons.dark_mode_outlined
+                        : Icons.light_mode_outlined,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
+                  tooltip: Theme.of(context).brightness == Brightness.light
+                      ? 'Switch to dark mode'
+                      : 'Switch to light mode',
+                ),
+                const SizedBox(width: 12),
+                // Auth buttons - conditional based on auth state
+                StreamBuilder<User?>(
+                  stream: AuthService.authStateChanges,
+                  builder: (context, snapshot) {
+                    final user = snapshot.data;
+                    final isAuthenticated = user != null && !user.isAnonymous;
+
+                    if (isAuthenticated) {
+                      // Show user menu when authenticated
+                      return _UserMenu(user: user);
+                    } else if (!hideButtons) {
+                      // Show auth buttons when not authenticated
+                      return Row(
+                        children: [
+                          OutlinedButton(
+                            onPressed: () =>
+                                _showAuthDialog(context, AuthMode.signIn),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                            ),
+                            child: Text(
+                              'Sign In',
+                              style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () =>
+                                _showAuthDialog(context, AuthMode.signUp),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                            ),
+                            child: const Text('Get Started'),
+                          ),
+                        ],
+                      );
+                    } else {
+                      return const SizedBox.shrink();
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -243,73 +209,34 @@ class _UserMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      offset: const Offset(0, 50),
+      tooltip: user.displayName ?? user.email ?? 'User',
+      offset: const Offset(0, 40),
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 5,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(50),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1.5,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              backgroundImage: user.photoURL != null
-                  ? NetworkImage(
-                      user.photoURL!,
-                    )
-                  : null,
-              child: user.photoURL == null
-                  ? Text(
-                      _getInitials(user.displayName ?? user.email ?? 'U'),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  user.displayName ?? 'User',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (user.email != null)
-                  Text(
-                    user.email!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer
-                              .withValues(alpha: 0.7),
-                          fontSize: 10,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
-          ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(50),
+        child: CachedNetworkImage(
+          imageUrl: user.photoURL ?? '',
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Icon(
+            Icons.person_outline_rounded,
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          errorWidget: (context, url, error) => Icon(
+            Icons.person_outline_rounded,
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
         ),
       ),
       onSelected: (value) => _handleMenuAction(context, value),
@@ -338,7 +265,7 @@ class _UserMenu extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
           ),
         ),
-        const PopupMenuDivider(),
+        PopupMenuDivider(color: Theme.of(context).colorScheme.outline),
         PopupMenuItem(
           value: 'signout',
           child: ListTile(
@@ -379,20 +306,9 @@ class _UserMenu extends StatelessWidget {
   Future<void> _handleSignOut(BuildContext context) async {
     try {
       await AuthService.signOut();
-      logPrint('✅ User signed out from header menu');
+      logPrint('✅ User signed out');
     } catch (e) {
       logPrint('❌ Error signing out: $e');
-    }
-  }
-
-  String _getInitials(String name) {
-    if (name.isEmpty) return 'U';
-
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    } else {
-      return name[0].toUpperCase();
     }
   }
 }

@@ -48,130 +48,121 @@ class AppToast extends StatelessWidget {
           decoration: BoxDecoration(
             color: effectiveBackgroundColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: titleTextColor,
-            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(80),
-                blurRadius: 5,
+                color: Colors.black.withAlpha(100),
+                blurRadius: 8,
                 offset: Offset(0, 2),
               ),
             ],
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: titleTextColor.withAlpha(20),
-              borderRadius: BorderRadius.circular(9),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 8,
+              top: 8,
+              bottom: 10,
             ),
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 12,
-                right: 8,
-                top: 8,
-                bottom: 10,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: 300, // Leave space for the button
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (title != null)
-                                    DefaultTextStyle(
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium!
-                                          .copyWith(
-                                            color: titleTextColor,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      child: title!,
-                                    ),
-                                  if (description != null) ...[
-                                    if (title != null) SizedBox(height: 2),
-                                    DefaultTextStyle(
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall!
-                                          .copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      child: description!,
-                                    ),
-                                  ],
+            child: Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: 300, // Leave space for the button
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (title != null)
+                                  DefaultTextStyle(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium!
+                                        .copyWith(
+                                          color: titleTextColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    child: title!,
+                                  ),
+                                if (description != null) ...[
+                                  if (title != null) SizedBox(height: 2),
+                                  DefaultTextStyle(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
+                                        .copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    child: description!,
+                                  ),
                                 ],
-                              ),
+                              ],
                             ),
                           ),
-                          if (action != null) ...[
-                            SizedBox(width: 8),
-                            action!,
-                          ],
+                        ),
+                        if (action != null) ...[
+                          SizedBox(width: 8),
+                          action!,
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                  InkWell(
-                    onTap: onClose ?? () {},
-                    borderRadius: BorderRadius.circular(30),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: Icon(
-                        Icons.close,
-                        size: 20,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(180),
-                      ),
+                ),
+                InkWell(
+                  onTap: onClose ?? () {},
+                  borderRadius: BorderRadius.circular(30),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withAlpha(180),
                     ),
                   ),
-                  // TextButton(
-                  //   onPressed: onClose ?? () {},
-                  //   style: TextButton.styleFrom(
-                  //     backgroundColor: Theme.of(context)
-                  //         .colorScheme
-                  //         .outline
-                  //         .withValues(alpha: 0.5),
-                  //     foregroundColor: Theme.of(context).colorScheme.onSurface,
-                  //     shape: RoundedRectangleBorder(
-                  //       borderRadius: BorderRadius.circular(8),
-                  //     ),
-                  //   ),
-                  //   child: Text(
-                  //     actionLabel ?? "Close",
-                  //     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  //           color: Theme.of(context)
-                  //               .colorScheme
-                  //               .onSurface
-                  //               .withValues(alpha: 0.7),
-                  //           fontWeight: FontWeight.w600,
-                  //         ),
-                  //   ),
-                  // ),
-                ],
-              ),
+                ),
+                // TextButton(
+                //   onPressed: onClose ?? () {},
+                //   style: TextButton.styleFrom(
+                //     backgroundColor: Theme.of(context)
+                //         .colorScheme
+                //         .outline
+                //         .withValues(alpha: 0.5),
+                //     foregroundColor: Theme.of(context).colorScheme.onSurface,
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //   ),
+                //   child: Text(
+                //     actionLabel ?? "Close",
+                //     style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                //           color: Theme.of(context)
+                //               .colorScheme
+                //               .onSurface
+                //               .withValues(alpha: 0.7),
+                //           fontWeight: FontWeight.w600,
+                //         ),
+                //   ),
+                // ),
+              ],
             ),
           ),
         ),

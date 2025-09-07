@@ -6,9 +6,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:travio/models/trip.dart';
 import 'package:travio/models/place.dart';
+import 'package:travio/services/auth_service.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/page_loading_indicator.dart';
+import 'package:travio/widgets/restricted_access_view.dart';
 import 'package:travio/widgets/sonnar.dart';
 import 'package:travio/widgets/trip_details/trip_info_views/trip_info_views.dart';
 
@@ -41,6 +43,14 @@ class _TripInfoSectionState extends State<TripInfoSection> {
 
   bool get _isDateRangeSet =>
       _currentDateRange?.start != null && _currentDateRange?.end != null;
+
+  bool get _hasFlightInfo => _trip?.documentInfo.hasFlightInfo ?? false;
+  bool get _hasHotelInfo => _trip?.documentInfo.hasHotelInfo ?? false;
+  bool get _hasItineraryInfo => _hasFlightInfo && _hasHotelInfo;
+  bool get _isAuthenticated =>
+      AuthService.currentUser != null && !AuthService.currentUser!.isAnonymous;
+  bool get _userHasAccess =>
+      (_trip?.isPublic ?? true) || _trip?.userUid == AuthService.currentUserUid;
 
   Future<void> _loadTripData() async {
     try {
@@ -214,11 +224,13 @@ class _TripInfoSectionState extends State<TripInfoSection> {
       setState(
         () => _currentStep = _trip == null
             ? 1
-            : _selectedVisitPlaces.length > 1
-                ? 4
-                : _isDateRangeSet
-                    ? 3
-                    : 2,
+            : _hasItineraryInfo
+                ? 5
+                : _selectedVisitPlaces.length > 1
+                    ? 4
+                    : _isDateRangeSet
+                        ? 3
+                        : 2,
       );
       _maybeScrollToCurrentStep(animationDuration: 1000.0);
     });
@@ -250,6 +262,12 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   void initState() {
     super.initState();
     _loadTripData();
+
+    // Listen to auth state changes
+    AuthService.authStateChanges.listen((user) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   @override
@@ -263,118 +281,126 @@ class _TripInfoSectionState extends State<TripInfoSection> {
   Widget build(BuildContext context) {
     return PageLoadingIndicator(
       isLoading: _isLoading,
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        padding: EdgeInsets.only(top: context.appHeight * 0.1),
-        physics: const NeverScrollableScrollPhysics(),
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            children: [
-              TripInfoSectionView(
-                step: 1,
-                isCurrentStep: _currentStep == 1,
-                title: 'Select a destination',
-                subtitle: 'Search for the country or city you want to visit.',
-                child: SelectDestinationView(
-                  controller: _placeTextController,
-                  focusNode: _placeTextFocusNode,
-                  isSearching: false,
-                  trip: _trip,
-                  onPlaceSelected: (selectedPlace) {},
-                  onSubmitted: (query) {},
-                  onPhotosLoaded: _initialScroll,
+      child: !_userHasAccess
+          ? RestrictedAccessView()
+          : SingleChildScrollView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(top: context.appHeight * 0.1),
+              physics: const NeverScrollableScrollPhysics(),
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                  children: [
+                    TripInfoSectionView(
+                      step: 1,
+                      isCurrentStep: _currentStep == 1,
+                      title: 'Select a destination',
+                      subtitle:
+                          'Search for the country or city you want to visit.',
+                      child: SelectDestinationView(
+                        controller: _placeTextController,
+                        focusNode: _placeTextFocusNode,
+                        isSearching: false,
+                        trip: _trip,
+                        onPlaceSelected: (selectedPlace) {},
+                        onSubmitted: (query) {},
+                        onPhotosLoaded: _initialScroll,
+                      ),
+                    ),
+                    TripInfoSectionView(
+                      step: 2,
+                      isCurrentStep: _currentStep == 2,
+                      title: 'Duration of the trip',
+                      subtitle:
+                          'Select the dates of your ${_trip?.placeName} trip. Don\'t worry, you can modify it anytime.',
+                      child: DurationSelectorView(
+                        currentDateRange: _currentDateRange,
+                        onDateRangeChanged: _onDateRangeChanged,
+                      ),
+                      onStepTap: () {
+                        setState(() => _currentStep = 2);
+                        _maybeScrollToCurrentStep();
+                      },
+                      onPreviousStepTap: () {
+                        setState(() => _currentStep = 1);
+                        _maybeScrollToCurrentStep();
+                      },
+                    ),
+                    TripInfoSectionView(
+                      step: 3,
+                      isCurrentStep: _currentStep == 3,
+                      title: 'Choose places to visit',
+                      subtitle:
+                          'Here are some of the most popular places in ${_trip?.placeName}. '
+                          'Start by selecting the places that you might want to visit. You '
+                          'can search for more places once the initial creation is complete.\n\n'
+                          'When you\'re done, just click on the next step.',
+                      child: _trip?.placeId != null
+                          ? VisitPlacesSelectorView(
+                              selectedPlaceId: _trip!.placeId,
+                              initialSelectedPlaces: _selectedVisitPlaces,
+                              onSelectedPlacesChanged: _onSelectedPlacesChanged,
+                            )
+                          : const SizedBox(),
+                      onStepTap: () {
+                        setState(() => _currentStep = 3);
+                        _maybeScrollToCurrentStep();
+                      },
+                      onPreviousStepTap: () {
+                        setState(() => _currentStep = 2);
+                        _maybeScrollToCurrentStep();
+                      },
+                    ),
+                    TripInfoSectionView(
+                      step: 4,
+                      isCurrentStep: _currentStep == 4,
+                      title: 'Build itinerary',
+                      subtitle:
+                          'Build your itinerary by adding flight tickets, hotel bookings, '
+                          'and more.',
+                      child: _trip?.id != null
+                          ? BuildItineraryView(tripId: _trip!.id)
+                          : const SizedBox(),
+                      onStepTap: () {
+                        setState(() => _currentStep = 4);
+                        _maybeScrollToCurrentStep();
+                      },
+                      onPreviousStepTap: () {
+                        setState(() => _currentStep = 3);
+                        _maybeScrollToCurrentStep();
+                      },
+                    ),
+                    TripInfoSectionView(
+                      step: 5,
+                      isCurrentStep: _currentStep == 5,
+                      title: 'Invite co-travelers',
+                      subtitle: _isAuthenticated
+                          ? 'Invite your friends and family to join you on the trip. '
+                              'Coming soon.'
+                          : 'Login or create an account to securely save the trip details. '
+                              'Currently this trip is public, sign in to an account to make it private.',
+                      // 'Invite your friends and family to join you on the trip.',
+                      child: _trip?.id != null
+                          ? InviteCoTravelersView(
+                              tripId: _trip!.id,
+                            )
+                          : const SizedBox(),
+                      onStepTap: () {
+                        setState(() => _currentStep = 5);
+                        _maybeScrollToCurrentStep();
+                      },
+                      onPreviousStepTap: () {
+                        setState(() => _currentStep = 4);
+                        _maybeScrollToCurrentStep();
+                      },
+                    ),
+                    // Add some space at the bottom, so that the last step
+                    // has the same scroll height as the other steps
+                    SizedBox(height: _sectionTitleHeight + 16),
+                  ],
                 ),
               ),
-              TripInfoSectionView(
-                step: 2,
-                isCurrentStep: _currentStep == 2,
-                title: 'Duration of the trip',
-                subtitle:
-                    'Select the dates of your ${_trip?.placeName} trip. Don\'t worry, you can modify it anytime.',
-                child: DurationSelectorView(
-                  currentDateRange: _currentDateRange,
-                  onDateRangeChanged: _onDateRangeChanged,
-                  // onContinuePressed: () {
-                  //   setState(() => _currentStep = 3);
-                  //   _maybeScrollToCurrentStep();
-                  // },
-                ),
-                onStepTap: () {
-                  setState(() => _currentStep = 2);
-                  _maybeScrollToCurrentStep();
-                },
-                onPreviousStepTap: () {
-                  setState(() => _currentStep = 1);
-                  _maybeScrollToCurrentStep();
-                },
-              ),
-              TripInfoSectionView(
-                step: 3,
-                isCurrentStep: _currentStep == 3,
-                title: 'Choose places to visit',
-                subtitle:
-                    'Here are some of the most popular places in ${_trip?.placeName}. '
-                    'Start by selecting the places that you might want to visit. You '
-                    'can search for more places once the initial creation is complete.\n\n'
-                    'When you\'re done, just click on the next step.',
-                child: _trip?.placeId != null
-                    ? VisitPlacesSelectorView(
-                        selectedPlaceId: _trip!.placeId,
-                        initialSelectedPlaces: _selectedVisitPlaces,
-                        onSelectedPlacesChanged: _onSelectedPlacesChanged,
-                      )
-                    : const SizedBox(),
-                onStepTap: () {
-                  setState(() => _currentStep = 3);
-                  _maybeScrollToCurrentStep();
-                },
-                onPreviousStepTap: () {
-                  setState(() => _currentStep = 2);
-                  _maybeScrollToCurrentStep();
-                },
-              ),
-              TripInfoSectionView(
-                step: 4,
-                isCurrentStep: _currentStep == 4,
-                title: 'Build itinerary',
-                subtitle:
-                    'Build your itinerary by adding flight tickets, hotel bookings, '
-                    'and more.',
-                child: _trip?.id != null
-                    ? BuildItineraryView(tripId: _trip!.id)
-                    : const SizedBox(),
-                onStepTap: () {
-                  setState(() => _currentStep = 4);
-                  _maybeScrollToCurrentStep();
-                },
-                onPreviousStepTap: () {
-                  setState(() => _currentStep = 3);
-                  _maybeScrollToCurrentStep();
-                },
-              ),
-              TripInfoSectionView(
-                step: 5,
-                isCurrentStep: _currentStep == 5,
-                title: 'Invite co-travelers',
-                subtitle:
-                    'Login or create an account to securely save the trip details. '
-                    'Currently this trip is public, sign in to an account to make it private.\n\n'
-                    'Invite your friends and family to join you on the trip.',
-                child: SizedBox(),
-                onStepTap: () {
-                  setState(() => _currentStep = 5);
-                  _maybeScrollToCurrentStep();
-                },
-                onPreviousStepTap: () {
-                  setState(() => _currentStep = 4);
-                  _maybeScrollToCurrentStep();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
@@ -448,8 +474,8 @@ class TripInfoSectionView extends StatelessWidget {
                       child: GestureDetector(
                         onTap: isCurrentStep ? null : onStepTap,
                         child: Container(
-                          width: 50,
-                          height: 50,
+                          width: _sectionTitleHeight,
+                          height: _sectionTitleHeight,
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.primary,
                             shape: BoxShape.circle,

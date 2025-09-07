@@ -920,7 +920,7 @@ class _FlightContent extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 24, right: 24, bottom: 12, top: 10),
       child: LayoutBuilder(
-        builder: (context, constraints) {
+        builder: (_, constraints) {
           return Wrap(
             spacing: 24,
             runSpacing: 24,

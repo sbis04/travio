@@ -17,6 +17,8 @@ class Trip {
   final DateTime updatedAt;
   final TripStatus status;
   final TripDocumentInfo documentInfo;
+  // true if created by anonymous user, false if authenticated
+  final bool isPublic;
 
   Trip({
     required this.id,
@@ -34,6 +36,7 @@ class Trip {
     required this.updatedAt,
     this.status = TripStatus.planning,
     this.documentInfo = const TripDocumentInfo(),
+    this.isPublic = true, // Default to public
   });
 
   // Create Trip from Place
@@ -41,6 +44,7 @@ class Trip {
     required String userUid,
     required Place place,
     String? customId,
+    bool? isPublic,
   }) {
     final now = DateTime.now();
     return Trip(
@@ -56,6 +60,7 @@ class Trip {
       createdAt: now,
       updatedAt: now,
       status: TripStatus.planning,
+      isPublic: isPublic ?? true, // Default to public
     );
   }
 
@@ -75,6 +80,7 @@ class Trip {
         'end_date': endDate != null ? Timestamp.fromDate(endDate!) : null,
       },
       'document_info': documentInfo.toFirestore(),
+      'is_public': isPublic,
       'created_at': Timestamp.fromDate(createdAt),
       'updated_at': Timestamp.fromDate(updatedAt),
       'status': status.name,
@@ -109,6 +115,8 @@ class Trip {
       documentInfo: data['document_info'] != null
           ? TripDocumentInfo.fromFirestore(data['document_info'])
           : const TripDocumentInfo(),
+      // Default to public for backward compatibility
+      isPublic: data['is_public'] ?? true,
     );
   }
 
@@ -127,6 +135,7 @@ class Trip {
     DateTime? updatedAt,
     TripStatus? status,
     TripDocumentInfo? documentInfo,
+    bool? isPublic,
   }) {
     return Trip(
       id: id,
@@ -144,7 +153,19 @@ class Trip {
       updatedAt: updatedAt ?? DateTime.now(),
       status: status ?? this.status,
       documentInfo: documentInfo ?? this.documentInfo,
+      isPublic: isPublic ?? this.isPublic,
     );
+  }
+
+  // Helper methods for trip visibility
+  bool get isPrivate => !isPublic;
+
+  // Helper method to get visibility as string
+  String get visibilityString => isPublic ? 'Public' : 'Private';
+
+  @override
+  String toString() {
+    return 'Trip(id: $id, destination: $placeName, status: $status, visibility: $visibilityString)';
   }
 }
 
