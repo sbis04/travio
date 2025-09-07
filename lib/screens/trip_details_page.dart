@@ -18,6 +18,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: Stack(
           alignment: Alignment.topCenter,
