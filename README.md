@@ -8,7 +8,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 > **Try out here: [travio.appwrite.network](https://travio.appwrite.network/).**
-> 
+>
+> 📹 **[Demo Video](https://drive.google.com/file/d/1UjXDBXIsA1wH0QDNpDwV4avBGv5zu4kQ/view?usp=sharing)** - Complete walkthrough of Travio's features
+
 ## 📖 About
 
 Travio is a comprehensive travel planning platform that combines the power of AI, Google Services, and Firebase to create seamless trip planning experiences. Built for the [Appwrite Sites Hackathon 2025](https://hackathon.appwrite.network/), this application demonstrates modern web development practices with Flutter Web.
@@ -22,11 +24,9 @@ Travio is a comprehensive travel planning platform that combines the power of AI
 - 📊 **Real-Time Data Sync** - Live updates using Firestore streams
 - 🎯 **Intelligent Caching** - Optimized API usage with smart caching strategies
 
-## 🎥 Demo Video
-
-Check out the comprehensive demo video showcasing all features:
-
-📹 **[Demo Video](https://drive.google.com/file/d/1UjXDBXIsA1wH0QDNpDwV4avBGv5zu4kQ/view?usp=sharing)** - Complete walkthrough of Travio's features
+![Travio Image 1](./screenshots/travio_1.png)
+![Travio Image 2](./screenshots/travio_2.png)
+![Travio Image 3](./screenshots/travio_3.png)
 
 ## 🛠️ Tech Stack
 
