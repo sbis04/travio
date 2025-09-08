@@ -46,6 +46,23 @@ class _ExpandableSectionState extends State<ExpandableSection>
   }
 
   @override
+  void didUpdateWidget(ExpandableSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // React to external changes in initiallyExpanded
+    if (widget.initiallyExpanded != oldWidget.initiallyExpanded) {
+      setState(() {
+        _isExpanded = widget.initiallyExpanded;
+        if (_isExpanded) {
+          _animationController.forward();
+        } else {
+          _animationController.reverse();
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _animationController.dispose();
     super.dispose();

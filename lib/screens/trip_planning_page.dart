@@ -72,13 +72,26 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   List<AccommodationInformation> _accommodationInfo = [];
   GoogleMapController? _mapController;
 
+  // Sidebar state
+  String _selectedSection = ''; // Will be set to first available section
+
   @override
   void initState() {
     super.initState();
-    _loadTripData();
-    _loadVisitPlaces();
-    _loadAccommodationData();
-    _loadFlightData();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await Future.wait([
+      _loadTripData(),
+      _loadVisitPlaces(),
+      _loadAccommodationData(),
+      _loadFlightData(),
+    ]);
+
+    if (mounted) {
+      _setDefaultSelectedSection();
+    }
   }
 
   Future<void> _loadFlightData() async {
@@ -320,6 +333,578 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     );
   }
 
+  Widget _buildLeftSideSection() {
+    return Container(
+      width: 250,
+      color: Theme.of(context).colorScheme.primaryContainer,
+      height: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with logo
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: AppLogo(),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Conditional sections based on available data
+          if (_flightInfo.isNotEmpty)
+            _buildSidebarSection(
+              id: 'flights',
+              title: 'Flights',
+              icon: Icons.flight_rounded,
+              count: _flightInfo.length,
+              isSelected: _selectedSection == 'flights',
+              onTap: () => setState(() => _selectedSection = 'flights'),
+            ),
+
+          if (_accommodationInfo.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            _buildSidebarSection(
+              id: 'accommodations',
+              title: 'Accommodations',
+              icon: Icons.hotel_rounded,
+              count: _accommodationInfo.length,
+              isSelected: _selectedSection == 'accommodations',
+              onTap: () => setState(() => _selectedSection = 'accommodations'),
+            ),
+          ],
+
+          if (_visitPlaces.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            _buildSidebarSection(
+              id: 'places',
+              title: 'Places to visit',
+              icon: Icons.place_rounded,
+              count: _visitPlaces.length,
+              isSelected: _selectedSection == 'places',
+              onTap: () => setState(() => _selectedSection = 'places'),
+            ),
+          ],
+
+          Divider(
+            color: Theme.of(context).colorScheme.outline,
+            thickness: 1,
+            height: 50,
+          ),
+
+          // Itinerary section
+          Expanded(
+            child: _buildItinerarySection(),
+          ),
+
+          // Hide sidebar button at bottom
+          // Padding(
+          //   padding: const EdgeInsets.all(16),
+          //   child: TextButton.icon(
+          //     onPressed: () {
+          //       // TODO: Implement sidebar hide/show
+          //     },
+          //     icon: Icon(
+          //       Icons.chevron_left,
+          //       size: 16,
+          //       color: Theme.of(context)
+          //           .colorScheme
+          //           .onPrimaryContainer
+          //           .withValues(alpha: 0.7),
+          //     ),
+          //     label: Text(
+          //       'Hide sidebar',
+          //       style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          //             color: Theme.of(context)
+          //                 .colorScheme
+          //                 .onPrimaryContainer
+          //                 .withValues(alpha: 0.7),
+          //           ),
+          //     ),
+          //     style: TextButton.styleFrom(
+          //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          //     ),
+          //   ),
+          // ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarSection({
+    required String id,
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+    int? count,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                ),
+              ),
+              if (count != null && count > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    count.toString(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.8),
+                        ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItinerarySection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Itinerary header
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Planning',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Itinerary timeline
+          Expanded(
+            child: _buildItineraryTimeline(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItineraryTimeline() {
+    if (_trip?.startDate == null || _trip?.endDate == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'Set trip dates to see itinerary',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onPrimaryContainer
+                    .withValues(alpha: 0.6),
+              ),
+        ),
+      );
+    }
+
+    // Generate itinerary items based on trip data
+    final itineraryItems = _generateItineraryItems();
+
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: ListView.builder(
+        padding: EdgeInsets.only(bottom: 50),
+        itemCount: itineraryItems.length,
+        itemBuilder: (context, index) {
+          final item = itineraryItems[index];
+          return _buildItineraryItem(item);
+        },
+      ),
+    );
+  }
+
+  List<ItineraryItem> _generateItineraryItems() {
+    final items = <ItineraryItem>[];
+
+    if (_trip?.startDate == null || _trip?.endDate == null) return items;
+
+    final startDate = _trip!.startDate!;
+    final endDate = _trip!.endDate!;
+    final totalDays = endDate.difference(startDate).inDays + 1;
+
+    for (int i = 0; i < totalDays; i++) {
+      final currentDate = startDate.add(Duration(days: i));
+      final dayNumber = i + 1;
+
+      // Check for flights on this date
+      final dayFlights = _flightInfo.where((flight) {
+        return flight.departureTime != null &&
+            _isSameDay(flight.departureTime!, currentDate);
+      }).toList();
+
+      // Check for accommodations on this date
+      final dayAccommodations = _accommodationInfo.where((accommodation) {
+        return accommodation.checkInDate != null &&
+            _isSameDay(accommodation.checkInDate!, currentDate);
+      }).toList();
+
+      // Determine day description
+      String description;
+      if (i == 0 && dayFlights.isNotEmpty) {
+        description = 'Arrive in ${_trip!.placeName}';
+      } else if (i == totalDays - 1 && dayFlights.isNotEmpty) {
+        description = 'Departure';
+      } else if (dayAccommodations.isNotEmpty) {
+        description =
+            'Check-in ${dayAccommodations.first.hotelName ?? 'Hotel'}';
+      } else if (dayFlights.isNotEmpty) {
+        final flight = dayFlights.first;
+        description = '${flight.originCode} - ${flight.destinationCode}';
+      } else {
+        description = 'Explore ${_trip!.placeName}';
+      }
+
+      items.add(ItineraryItem(
+        date: currentDate,
+        dayNumber: dayNumber,
+        description: description,
+        hasFlights: dayFlights.isNotEmpty,
+        hasAccommodations: dayAccommodations.isNotEmpty,
+      ));
+    }
+
+    return items;
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  Widget _buildItineraryItem(ItineraryItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date header
+          Text(
+            _formatItineraryDate(item.date),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+
+          const SizedBox(height: 4),
+
+          // Description
+          Text(
+            item.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
+                ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          // Activity indicators
+          if (item.hasFlights || item.hasAccommodations) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                if (item.hasFlights) ...[
+                  Icon(
+                    Icons.flight_takeoff,
+                    size: 12,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (item.hasAccommodations) ...[
+                  Icon(
+                    Icons.hotel,
+                    size: 12,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.7),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatItineraryDate(DateTime date) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final weekday = weekdays[date.weekday - 1];
+    final month = months[date.month - 1];
+
+    return '$weekday, $month ${date.day}';
+  }
+
+  Widget _buildPlanningSection() {
+    if (_trip?.startDate == null || _trip?.endDate == null) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Planning section title
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Planning',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Date-based expandable sections
+        ..._buildDateSections(),
+      ],
+    );
+  }
+
+  List<Widget> _buildDateSections() {
+    if (_trip?.startDate == null || _trip?.endDate == null) return [];
+
+    final startDate = _trip!.startDate!;
+    final endDate = _trip!.endDate!;
+    final totalDays = endDate.difference(startDate).inDays + 1;
+
+    final widgets = <Widget>[];
+
+    for (int i = 0; i < totalDays; i++) {
+      final currentDate = startDate.add(Duration(days: i));
+
+      // Check for activities on this date
+      final dayFlights = _flightInfo.where((flight) {
+        return flight.departureTime != null &&
+            _isSameDay(flight.departureTime!, currentDate);
+      }).toList();
+
+      final dayAccommodations = _accommodationInfo.where((accommodation) {
+        return accommodation.checkInDate != null &&
+            _isSameDay(accommodation.checkInDate!, currentDate);
+      }).toList();
+
+      // Determine activity count for the day
+      final activityCount = dayFlights.length + dayAccommodations.length;
+
+      // Create expandable section for this date
+      widgets.add(
+        ExpandableSection(
+          title: _formatPlanningDate(currentDate),
+          count: activityCount,
+          icon: _getDateIcon(currentDate, dayFlights, dayAccommodations),
+          initiallyExpanded: false, // Collapsed by default
+          child: const SizedBox(
+            height: 200, // Placeholder height for future content
+            child: Center(
+              child: Text('Day planning content will go here'),
+            ),
+          ),
+        ),
+      );
+
+      // Add spacing between date sections (except for last item)
+      if (i < totalDays - 1) {
+        widgets.add(const SizedBox(height: 16));
+      }
+    }
+
+    return widgets;
+  }
+
+  String _formatPlanningDate(DateTime date) {
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final weekday = weekdays[date.weekday - 1];
+    final month = months[date.month - 1];
+
+    return '$weekday, $month ${date.day}';
+  }
+
+  IconData _getDateIcon(DateTime date, List<FlightInformation> dayFlights,
+      List<AccommodationInformation> dayAccommodations) {
+    // Priority: Flight > Accommodation > General day
+    if (dayFlights.isNotEmpty) {
+      return Icons.flight_takeoff;
+    } else if (dayAccommodations.isNotEmpty) {
+      return Icons.hotel;
+    } else {
+      return Icons.calendar_today;
+    }
+  }
+
+  void _setDefaultSelectedSection() {
+    if (_selectedSection.isNotEmpty) return; // Already set
+
+    // Set to first available section
+    if (_flightInfo.isNotEmpty) {
+      _selectedSection = 'flights';
+    } else if (_accommodationInfo.isNotEmpty) {
+      _selectedSection = 'accommodations';
+    } else if (_visitPlaces.isNotEmpty) {
+      _selectedSection = 'places';
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Widget _buildExpandableSections() {
+    return Column(
+      children: [
+        // Flight Section (always present if data exists)
+        if (_flightInfo.isNotEmpty) ...[
+          ExpandableSection(
+            title: 'Flights',
+            count: _flightInfo.length,
+            icon: Icons.flight_rounded,
+            initiallyExpanded: _selectedSection == 'flights',
+            child: FlightSection(flightInfo: _flightInfo),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Accommodation Section (always present if data exists)
+        if (_accommodationInfo.isNotEmpty) ...[
+          ExpandableSection(
+            title: 'Accommodations',
+            count: _accommodationInfo.length,
+            icon: Icons.hotel_rounded,
+            initiallyExpanded: _selectedSection == 'accommodations',
+            child: AccommodationSection(accommodationInfo: _accommodationInfo),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Places to Visit Section (always present if data exists)
+        if (_visitPlaces.isNotEmpty) ...[
+          ExpandableSection(
+            title: 'Places to visit',
+            count: _visitPlaces.length,
+            icon: Icons.place_rounded,
+            initiallyExpanded: _selectedSection == 'places',
+            child: PlacesSection(visitPlaces: _visitPlaces),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildContentSection() {
     return Material(
       clipBehavior: Clip.none,
@@ -330,21 +915,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 250,
-              color: Theme.of(context).colorScheme.primaryContainer,
-              height: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: AppLogo(),
-                  ),
-                ],
-              ),
-            ),
+            _buildLeftSideSection(),
             VerticalDivider(
               color: Theme.of(context).colorScheme.outline,
               width: 1,
@@ -362,8 +933,10 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                       // Auto-sliding images with overlay
                       _buildImageSection(),
                       const SizedBox(height: 24),
-                      // Expandable sections
+                      // All sections with selective expansion
                       _buildExpandableSections(),
+                      const SizedBox(height: 24),
+                      _buildPlanningSection(),
                     ],
                   ),
                 ),
@@ -466,42 +1039,6 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     );
   }
 
-  Widget _buildExpandableSections() {
-    return Column(
-      children: [
-        // Flight Section
-        ExpandableSection(
-          title: 'Flights',
-          count: _flightInfo.length,
-          icon: Icons.flight_rounded,
-          child: FlightSection(flightInfo: _flightInfo),
-        ),
-
-        // Accommodation Section
-        if (_accommodationInfo.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          ExpandableSection(
-            title: 'Accommodations',
-            count: _accommodationInfo.length,
-            icon: Icons.hotel_rounded,
-            child: AccommodationSection(accommodationInfo: _accommodationInfo),
-          ),
-        ],
-
-        // Places to Visit Section
-        if (_visitPlaces.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          ExpandableSection(
-            title: 'Places to visit',
-            count: _visitPlaces.length,
-            icon: Icons.place_rounded,
-            child: PlacesSection(visitPlaces: _visitPlaces),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildMapSection() {
     return _trip?.latitude != null && _trip?.longitude != null
         ? AnimatedOpacity(
@@ -596,4 +1133,21 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     ];
     return '${date.day} ${months[date.month - 1]}, ${date.year}';
   }
+}
+
+/// Data model for itinerary timeline items
+class ItineraryItem {
+  final DateTime date;
+  final int dayNumber;
+  final String description;
+  final bool hasFlights;
+  final bool hasAccommodations;
+
+  ItineraryItem({
+    required this.date,
+    required this.dayNumber,
+    required this.description,
+    this.hasFlights = false,
+    this.hasAccommodations = false,
+  });
 }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:travio/screens/about_page.dart';
 import 'package:travio/screens/contact_page.dart';
 import 'package:travio/screens/landing_page.dart';
+import 'package:travio/screens/page_not_found_view.dart';
 import 'package:travio/screens/trip_details_page.dart';
 import 'package:travio/screens/trip_planning_page.dart';
 
@@ -36,7 +37,7 @@ class AppRouter {
 
       // Trip planning page route
       GoRoute(
-        path: '/trip/:tripId/planning',
+        path: '/trip/:tripId/plan',
         name: 'trip-planning',
         pageBuilder: (context, state) {
           final tripId = state.pathParameters['tripId'] ?? '';
@@ -85,38 +86,7 @@ class AppRouter {
     ],
 
     // Error page for unknown routes
-    errorBuilder: (context, state) => Scaffold(
-      appBar: AppBar(
-        title: const Text('Page Not Found'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '404 - Page Not Found',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'The page "${state.uri}" could not be found.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go('/'),
-              child: const Text('Go Home'),
-            ),
-          ],
-        ),
-      ),
-    ),
+    errorBuilder: (_, __) => PageNotFoundView(),
   );
 
   static GoRouter get router => _router;
