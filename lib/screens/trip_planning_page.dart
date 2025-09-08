@@ -89,9 +89,9 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       _loadFlightData(),
     ]);
 
-    if (mounted) {
-      _setDefaultSelectedSection();
-    }
+    // if (mounted) {
+    //   _setDefaultSelectedSection();
+    // }
   }
 
   Future<void> _loadFlightData() async {
@@ -358,7 +358,8 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
               icon: Icons.flight_rounded,
               count: _flightInfo.length,
               isSelected: _selectedSection == 'flights',
-              onTap: () => setState(() => _selectedSection = 'flights'),
+              onTap: (isExpanded) => setState(
+                  () => _selectedSection = isExpanded ? '' : 'flights'),
             ),
 
           if (_accommodationInfo.isNotEmpty) ...[
@@ -369,7 +370,8 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
               icon: Icons.hotel_rounded,
               count: _accommodationInfo.length,
               isSelected: _selectedSection == 'accommodations',
-              onTap: () => setState(() => _selectedSection = 'accommodations'),
+              onTap: (isExpanded) => setState(
+                  () => _selectedSection = isExpanded ? '' : 'accommodations'),
             ),
           ],
 
@@ -381,7 +383,8 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
               icon: Icons.place_rounded,
               count: _visitPlaces.length,
               isSelected: _selectedSection == 'places',
-              onTap: () => setState(() => _selectedSection = 'places'),
+              onTap: (isExpanded) =>
+                  setState(() => _selectedSection = isExpanded ? '' : 'places'),
             ),
           ],
 
@@ -435,13 +438,13 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     required String title,
     required IconData icon,
     required bool isSelected,
-    required VoidCallback onTap,
+    required Function(bool isExpanded) onTap,
     int? count,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () => onTap(isSelected),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -847,22 +850,22 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     }
   }
 
-  void _setDefaultSelectedSection() {
-    if (_selectedSection.isNotEmpty) return; // Already set
+  // void _setDefaultSelectedSection() {
+  //   if (_selectedSection.isNotEmpty) return; // Already set
 
-    // Set to first available section
-    if (_flightInfo.isNotEmpty) {
-      _selectedSection = 'flights';
-    } else if (_accommodationInfo.isNotEmpty) {
-      _selectedSection = 'accommodations';
-    } else if (_visitPlaces.isNotEmpty) {
-      _selectedSection = 'places';
-    }
+  //   // Set to first available section
+  //   if (_flightInfo.isNotEmpty) {
+  //     _selectedSection = 'flights';
+  //   } else if (_accommodationInfo.isNotEmpty) {
+  //     _selectedSection = 'accommodations';
+  //   } else if (_visitPlaces.isNotEmpty) {
+  //     _selectedSection = 'places';
+  //   }
 
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  //   if (mounted) {
+  //     setState(() {});
+  //   }
+  // }
 
   Widget _buildExpandableSections() {
     return Column(
