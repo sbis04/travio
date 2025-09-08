@@ -26,7 +26,7 @@ Travio is a comprehensive travel planning platform that combines the power of AI
 
 Check out the comprehensive demo video showcasing all features:
 
-📹 **[Demo Video](./demo/Travio%20Studio.mp4)** - Complete walkthrough of Travio's features
+📹 **[Demo Video](https://drive.google.com/file/d/1UjXDBXIsA1wH0QDNpDwV4avBGv5zu4kQ/view?usp=sharing)** - Complete walkthrough of Travio's features
 
 ## 🛠️ Tech Stack
 
