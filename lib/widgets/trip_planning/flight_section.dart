@@ -341,8 +341,9 @@ class _FlightInfoDisplay extends StatelessWidget {
       'Gate': flightInfo.gate,
       'Terminal': flightInfo.terminal,
       'Class': flightInfo.classOfService,
-      'PNR': flightInfo.confirmationNumber,
-      'Passenger': flightInfo.passengerName,
+      'PNR': 'ABC12J',
+      // 'PNR': flightInfo.confirmationNumber,
+      'Passenger': 'SOUVIK BISWAS',
     };
 
     final nonEmptyDetails = details.entries
