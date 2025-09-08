@@ -1,4 +1,4 @@
-# 🌍 Travio - AI-Powered Travel Planning Platform
+# 🌍 Travio - Trips Made Simple
 
 **Craft unforgettable adventures with Travio, the intuitive web app designed to simplify your trip planning from dream to destination.**
 
