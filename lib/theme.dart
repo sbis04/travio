@@ -4,7 +4,7 @@ class LightModeColors {
   // Sunny Beach Day Palette
   static const lightPrimary = Color(0xFF2A9D8F); // Teal from palette
   static const lightOnPrimary = Color(0xFFFFFFFF);
-  static const lightPrimaryContainer = Color(0xFFEDF4F3); // Yellow from palette
+  static const lightPrimaryContainer = Color(0xFFF0F3F2); // Yellow from palette
   static const lightOnPrimaryContainer =
       Color(0xFF264653); // Dark teal from palette
   static const lightSecondary = Color(0xFFF4A261); // Orange from palette
@@ -26,7 +26,8 @@ class DarkModeColors {
   // Dark version of Sunny Beach Day Palette
   static const darkPrimary = Color(0xFF52C7B8); // Lighter teal for dark mode
   static const darkOnPrimary = Color(0xFF264653);
-  static const darkPrimaryContainer = Color(0xFF12443C); // Darker teal
+  static const darkPrimaryContainer =
+      Color.fromARGB(255, 2, 32, 27); // Darker teal
   static const darkOnPrimaryContainer = Color(0xFFE9C46A);
   static const darkSecondary = Color(0xFFF4A261); // Keep orange
   static const darkOnSecondary = Color(0xFF264653);

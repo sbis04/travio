@@ -36,68 +36,7 @@ class AppHeader extends StatelessWidget {
             color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
             child: Row(
               children: [
-                // Logo
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => context.go('/'),
-                    child: Row(
-                      children: [
-                        Image.asset(
-                          'assets/images/travio_logo_small.png',
-                          width: 28,
-                          height: 28,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Travio',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Preview badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Preview',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.5),
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
+                AppLogo(),
                 const Spacer(),
                 if (!hideButtons) ...[
                   const SizedBox(width: 24),
@@ -120,25 +59,7 @@ class AppHeader extends StatelessWidget {
                   const SizedBox(width: 32),
                 ],
                 // Theme toggle button
-                IconButton(
-                  focusColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  onPressed: () => context.read<ThemeProvider>().toggleTheme(),
-                  icon: Icon(
-                    Theme.of(context).brightness == Brightness.light
-                        ? Icons.dark_mode_outlined
-                        : Icons.light_mode_outlined,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
-                  tooltip: Theme.of(context).brightness == Brightness.light
-                      ? 'Switch to dark mode'
-                      : 'Switch to light mode',
-                ),
+                AppThemeToggle(),
                 const SizedBox(width: 12),
                 // Auth buttons - conditional based on auth state
                 StreamBuilder<User?>(
@@ -207,6 +128,103 @@ class AppHeader extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       builder: (context) => AuthDialog(initialMode: mode),
+    );
+  }
+}
+
+class AppThemeToggle extends StatelessWidget {
+  const AppThemeToggle({
+    super.key,
+    this.opacity = 0.6,
+  });
+
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      focusColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      onPressed: () => context.read<ThemeProvider>().toggleTheme(),
+      icon: Icon(
+        Theme.of(context).brightness == Brightness.light
+            ? Icons.dark_mode_outlined
+            : Icons.light_mode_outlined,
+        color:
+            Theme.of(context).colorScheme.onSurface.withValues(alpha: opacity),
+      ),
+    );
+  }
+}
+
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => context.go('/'),
+            child: Row(
+              children: [
+                Image.asset(
+                  'assets/images/travio_logo_small.png',
+                  width: 28,
+                  height: 28,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Travio',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // Preview badge
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Preview',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

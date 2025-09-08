@@ -1,6 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:travio/models/document.dart';
+import 'package:travio/models/place.dart';
 import 'package:travio/models/trip.dart';
+import 'package:travio/services/document_service.dart';
 import 'package:travio/services/place_photo_cache_service.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
@@ -20,6 +26,16 @@ class TripPlanningPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(
+          right: 8,
+          top: 16,
+        ),
+        child: PointerInterceptor(
+          child: AppThemeToggle(opacity: 1),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
       body: Column(
         children: [
           // const AppHeader(fullWidth: true),
@@ -51,12 +67,169 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   bool _isLoading = true;
   bool _isMapLoading = true;
   List<String> _placeImages = [];
+  List<Place> _visitPlaces = [];
+  List<FlightInformation> _flightInfo = [];
+  List<AccommodationInformation> _accommodationInfo = [];
   GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
     _loadTripData();
+    _loadVisitPlaces();
+    _loadAccommodationData();
+    _loadFlightData();
+  }
+
+  Future<void> _loadFlightData() async {
+    try {
+      logPrint('✈️ Loading flight data for trip: ${widget.tripId}');
+
+      // Get all documents for this trip
+      final documents = await DocumentService.getDocuments(widget.tripId);
+      final flightDocuments =
+          documents.where((doc) => doc.type == DocumentType.flight).toList();
+
+      // Load flight info from subcollections
+      await _loadAllFlightInfo(flightDocuments);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        logPrint('✅ Loaded ${flightDocuments.length} flight document(s)');
+        logPrint('✈️ Total flights: ${_flightInfo.length}');
+      }
+    } catch (e) {
+      logPrint('❌ Error loading flight data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadAllFlightInfo(List<TripDocument> flightDocuments) async {
+    try {
+      final List<FlightInformation> allFlights = [];
+
+      for (final document in flightDocuments) {
+        try {
+          final flightCollection = await DocumentService.firestore
+              .collection('trips')
+              .doc(widget.tripId)
+              .collection('documents')
+              .doc(document.id)
+              .collection('flight_info')
+              .orderBy('flight_index')
+              .get();
+
+          for (final doc in flightCollection.docs) {
+            try {
+              final flightInfo = FlightInformation.fromFirestore(doc.data());
+              allFlights.add(flightInfo);
+            } catch (e) {
+              logPrint('⚠️ Error parsing flight ${doc.id}: $e');
+            }
+          }
+        } catch (e) {
+          logPrint('❌ Error loading flights from document ${document.id}: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() => _flightInfo = allFlights);
+      }
+    } catch (e) {
+      logPrint('❌ Error in batch flight info loading: $e');
+    }
+  }
+
+  Future<void> _loadAccommodationData() async {
+    try {
+      logPrint('🏨 Loading accommodation data for trip: ${widget.tripId}');
+
+      // Get all documents for this trip
+      final documents = await DocumentService.getDocuments(widget.tripId);
+      final hotelDocuments =
+          documents.where((doc) => doc.type == DocumentType.hotel).toList();
+
+      // Load accommodation info from subcollections
+      await _loadAllAccommodationInfo(hotelDocuments);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        logPrint('✅ Loaded ${hotelDocuments.length} hotel document(s)');
+        logPrint('🏨 Total accommodations: ${_accommodationInfo.length}');
+      }
+    } catch (e) {
+      logPrint('❌ Error loading accommodation data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadAllAccommodationInfo(
+      List<TripDocument> hotelDocuments) async {
+    try {
+      final List<AccommodationInformation> allAccommodations = [];
+
+      for (final document in hotelDocuments) {
+        try {
+          final accommodationCollection = await DocumentService.firestore
+              .collection('trips')
+              .doc(widget.tripId)
+              .collection('documents')
+              .doc(document.id)
+              .collection('accommodation_info')
+              .orderBy('accommodation_index')
+              .get();
+
+          for (final doc in accommodationCollection.docs) {
+            try {
+              final accommodationInfo =
+                  AccommodationInformation.fromFirestore(doc.data());
+              allAccommodations.add(accommodationInfo);
+            } catch (e) {
+              logPrint('⚠️ Error parsing accommodation ${doc.id}: $e');
+            }
+          }
+        } catch (e) {
+          logPrint(
+              '❌ Error loading accommodations from document ${document.id}: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() => _accommodationInfo = allAccommodations);
+      }
+    } catch (e) {
+      logPrint('❌ Error in batch accommodation info loading: $e');
+    }
+  }
+
+  Future<void> _loadVisitPlaces() async {
+    try {
+      logPrint('📍 Loading visit places for trip: ${widget.tripId}');
+
+      final places = await TripService.getVisitPlaces(widget.tripId);
+
+      safeSetState(() {
+        _visitPlaces = places;
+        _isLoading = false;
+      });
+
+      logPrint('✅ Loaded ${places.length} visit place(s)');
+    } catch (e) {
+      logPrint('❌ Error loading visit places: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _loadTripData() async {
@@ -75,16 +248,14 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
         maxPhotos: 20,
       );
 
-      if (mounted) {
-        setState(() {
-          _trip = trip;
-          _placeImages = images;
-          _isLoading = false;
-        });
+      safeSetState(() {
+        _trip = trip;
+        _placeImages = images;
+        _isLoading = false;
+      });
 
-        logPrint('✅ Trip planning data loaded: ${trip.placeName}');
-        logPrint('📸 Loaded ${images.length} images for place');
-      }
+      logPrint('✅ Trip planning data loaded: ${trip.placeName}');
+      logPrint('📸 Loaded ${images.length} images for place');
     } catch (e) {
       logPrint('❌ Error loading trip planning data: $e');
       if (mounted) {
@@ -109,6 +280,9 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final screenWidth = screenSize.width;
+    final planningAreaWidth = max(min(screenWidth * 0.5, 800.0), 630.0);
     return PageLoadingIndicator(
       isLoading: _isLoading,
       child: _trip == null
@@ -119,8 +293,8 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Left Side - Content
-                    Expanded(
-                      child: const SizedBox(),
+                    SizedBox(
+                      width: planningAreaWidth,
                     ),
                     // Right Side - Map
                     Expanded(
@@ -132,9 +306,9 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Left Side - Content
-                    Expanded(
-                      child: _buildContentSection(),
-                    ),
+                    SizedBox(
+                        width: planningAreaWidth,
+                        child: _buildContentSection()),
                     // Right Side - Map
                     Expanded(
                       child: const SizedBox(),
@@ -153,24 +327,49 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       elevation: 12,
       child: SizedBox(
         height: double.infinity,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Auto-sliding images with overlay
-              _buildImageSection(),
-              const SizedBox(height: 32),
-              // Expandable sections
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 24,
-                  right: 24,
-                  bottom: 24,
-                ),
-                child: _buildExpandableSections(),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 250,
+              color: Theme.of(context).colorScheme.primaryContainer,
+              height: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: AppLogo(),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            VerticalDivider(
+              color: Theme.of(context).colorScheme.outline,
+              width: 1,
+              thickness: 1,
+            ),
+            Expanded(
+              child: ScrollConfiguration(
+                behavior:
+                    ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 60),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Auto-sliding images with overlay
+                      _buildImageSection(),
+                      const SizedBox(height: 24),
+                      // Expandable sections
+                      _buildExpandableSections(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -273,34 +472,32 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
         // Flight Section
         ExpandableSection(
           title: 'Flights',
-          count: _trip!.documentInfo.hasFlightInfo
-              ? 2
-              : 0, // TODO: Get actual count
-          icon: Icons.flight_takeoff,
-          child: FlightSection(tripId: widget.tripId),
+          count: _flightInfo.length,
+          icon: Icons.flight_rounded,
+          child: FlightSection(flightInfo: _flightInfo),
         ),
-
-        const SizedBox(height: 16),
 
         // Accommodation Section
-        ExpandableSection(
-          title: 'Accommodations',
-          count: _trip!.documentInfo.hasHotelInfo
-              ? 1
-              : 0, // TODO: Get actual count
-          icon: Icons.hotel,
-          child: AccommodationSection(tripId: widget.tripId),
-        ),
-
-        const SizedBox(height: 16),
+        if (_accommodationInfo.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          ExpandableSection(
+            title: 'Accommodations',
+            count: _accommodationInfo.length,
+            icon: Icons.hotel_rounded,
+            child: AccommodationSection(accommodationInfo: _accommodationInfo),
+          ),
+        ],
 
         // Places to Visit Section
-        ExpandableSection(
-          title: 'Places to visit',
-          count: 0, // TODO: Get actual count from visit places
-          icon: Icons.place,
-          child: PlacesSection(tripId: widget.tripId),
-        ),
+        if (_visitPlaces.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          ExpandableSection(
+            title: 'Places to visit',
+            count: _visitPlaces.length,
+            icon: Icons.place_rounded,
+            child: PlacesSection(visitPlaces: _visitPlaces),
+          ),
+        ],
       ],
     );
   }
@@ -311,17 +508,22 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
             opacity: _isMapLoading ? 0.01 : 1.0,
             duration: const Duration(milliseconds: 600),
             child: GoogleMap(
+              style: Theme.of(context).brightness == Brightness.light
+                  ? kGoogleMapsLightStyle
+                  : kGoogleMapsDarkStyle,
               onMapCreated: _onMapCreated,
               myLocationEnabled: false,
               buildingsEnabled: false,
               compassEnabled: false,
               zoomControlsEnabled: false,
-              zoomGesturesEnabled: false,
-              scrollGesturesEnabled: false,
-              tiltGesturesEnabled: false,
-              rotateGesturesEnabled: false,
+              zoomGesturesEnabled: true,
+              scrollGesturesEnabled: true,
+              tiltGesturesEnabled: true,
+              rotateGesturesEnabled: true,
               trafficEnabled: false,
               mapToolbarEnabled: false,
+              myLocationButtonEnabled: false,
+              webCameraControlEnabled: false,
               initialCameraPosition: CameraPosition(
                 target: LatLng(_trip!.latitude!, _trip!.longitude!),
                 zoom: 12,

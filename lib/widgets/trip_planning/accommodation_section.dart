@@ -1,107 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:travio/models/document.dart';
-import 'package:travio/services/document_service.dart';
-import 'package:travio/utils/utils.dart';
 
 class AccommodationSection extends StatefulWidget {
   const AccommodationSection({
     super.key,
-    required this.tripId,
+    required this.accommodationInfo,
   });
 
-  final String tripId;
+  final List<AccommodationInformation> accommodationInfo;
 
   @override
   State<AccommodationSection> createState() => _AccommodationSectionState();
 }
 
 class _AccommodationSectionState extends State<AccommodationSection> {
-  List<AccommodationInformation> _accommodationInfo = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAccommodationData();
-  }
-
-  Future<void> _loadAccommodationData() async {
-    try {
-      logPrint('🏨 Loading accommodation data for trip: ${widget.tripId}');
-
-      // Get all documents for this trip
-      final documents = await DocumentService.getDocuments(widget.tripId);
-      final hotelDocuments =
-          documents.where((doc) => doc.type == DocumentType.hotel).toList();
-
-      // Load accommodation info from subcollections
-      await _loadAllAccommodationInfo(hotelDocuments);
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        logPrint('✅ Loaded ${hotelDocuments.length} hotel document(s)');
-        logPrint('🏨 Total accommodations: ${_accommodationInfo.length}');
-      }
-    } catch (e) {
-      logPrint('❌ Error loading accommodation data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _loadAllAccommodationInfo(
-      List<TripDocument> hotelDocuments) async {
-    try {
-      final List<AccommodationInformation> allAccommodations = [];
-
-      for (final document in hotelDocuments) {
-        try {
-          final accommodationCollection = await DocumentService.firestore
-              .collection('trips')
-              .doc(widget.tripId)
-              .collection('documents')
-              .doc(document.id)
-              .collection('accommodation_info')
-              .orderBy('accommodation_index')
-              .get();
-
-          for (final doc in accommodationCollection.docs) {
-            try {
-              final accommodationInfo =
-                  AccommodationInformation.fromFirestore(doc.data());
-              allAccommodations.add(accommodationInfo);
-            } catch (e) {
-              logPrint('⚠️ Error parsing accommodation ${doc.id}: $e');
-            }
-          }
-        } catch (e) {
-          logPrint(
-              '❌ Error loading accommodations from document ${document.id}: $e');
-        }
-      }
-
-      if (mounted) {
-        setState(() => _accommodationInfo = allAccommodations);
-      }
-    } catch (e) {
-      logPrint('❌ Error in batch accommodation info loading: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_accommodationInfo.isEmpty) {
+    if (widget.accommodationInfo.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -141,9 +57,10 @@ class _AccommodationSectionState extends State<AccommodationSection> {
 
     return Column(
       children: [
-        for (int i = 0; i < _accommodationInfo.length; i++) ...[
-          _AccommodationCard(accommodation: _accommodationInfo[i]),
-          if (i < _accommodationInfo.length - 1) const SizedBox(height: 12),
+        for (int i = 0; i < widget.accommodationInfo.length; i++) ...[
+          _AccommodationCard(accommodation: widget.accommodationInfo[i]),
+          if (i < widget.accommodationInfo.length - 1)
+            const SizedBox(height: 12),
         ],
       ],
     );

@@ -1,371 +1,416 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:travio/models/document.dart';
-import 'package:travio/services/document_service.dart';
-import 'package:travio/utils/utils.dart';
 
 class FlightSection extends StatefulWidget {
   const FlightSection({
     super.key,
-    required this.tripId,
+    required this.flightInfo,
   });
 
-  final String tripId;
+  final List<FlightInformation> flightInfo;
 
   @override
   State<FlightSection> createState() => _FlightSectionState();
 }
 
 class _FlightSectionState extends State<FlightSection> {
-  List<FlightInformation> _flightInfo = [];
-  bool _isLoading = true;
-
   @override
-  void initState() {
-    super.initState();
-    _loadFlightData();
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: widget.flightInfo.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (_, index) {
+        final flightInfo = widget.flightInfo[index];
+        return _FlightInfoDisplay(flightInfo: flightInfo);
+      },
+    );
   }
+}
 
-  Future<void> _loadFlightData() async {
-    try {
-      logPrint('✈️ Loading flight data for trip: ${widget.tripId}');
+/// Individual flight display matching the perfected mockup design
+class _FlightInfoDisplay extends StatelessWidget {
+  const _FlightInfoDisplay({
+    required this.flightInfo,
+  });
 
-      // Get all documents for this trip
-      final documents = await DocumentService.getDocuments(widget.tripId);
-      final flightDocuments =
-          documents.where((doc) => doc.type == DocumentType.flight).toList();
-
-      // Load flight info from subcollections
-      await _loadAllFlightInfo(flightDocuments);
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        logPrint('✅ Loaded ${flightDocuments.length} flight document(s)');
-        logPrint('✈️ Total flights: ${_flightInfo.length}');
-      }
-    } catch (e) {
-      logPrint('❌ Error loading flight data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _loadAllFlightInfo(List<TripDocument> flightDocuments) async {
-    try {
-      final List<FlightInformation> allFlights = [];
-
-      for (final document in flightDocuments) {
-        try {
-          final flightCollection = await DocumentService.firestore
-              .collection('trips')
-              .doc(widget.tripId)
-              .collection('documents')
-              .doc(document.id)
-              .collection('flight_info')
-              .orderBy('flight_index')
-              .get();
-
-          for (final doc in flightCollection.docs) {
-            try {
-              final flightInfo = FlightInformation.fromFirestore(doc.data());
-              allFlights.add(flightInfo);
-            } catch (e) {
-              logPrint('⚠️ Error parsing flight ${doc.id}: $e');
-            }
-          }
-        } catch (e) {
-          logPrint('❌ Error loading flights from document ${document.id}: $e');
-        }
-      }
-
-      if (mounted) {
-        setState(() => _flightInfo = allFlights);
-      }
-    } catch (e) {
-      logPrint('❌ Error in batch flight info loading: $e');
-    }
-  }
+  final FlightInformation flightInfo;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              children: [
+                // Flight header (airline and flight number)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      flightInfo.airline ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                    ),
+                    SizedBox(
+                      height: 16,
+                      child: VerticalDivider(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                        thickness: 1,
+                        width: 16,
+                      ),
+                    ),
+                    if (flightInfo.flightNumber != null)
+                      Text(
+                        flightInfo.flightNumber!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.5),
+                            ),
+                      ),
+                  ],
+                ),
+                // Flight route with airplane icon
+                Row(
+                  children: [
+                    Text(
+                      flightInfo.originCode ?? '',
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 36,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Container(
+                                width: double.infinity,
+                                height: 1,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          Transform.rotate(
+                            angle: pi / 2,
+                            child: Icon(
+                              Icons.flight_rounded,
+                              size: 40,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Container(
+                                width: double.infinity,
+                                height: 1,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      flightInfo.destinationCode ?? '',
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 36,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                    ),
+                  ],
+                ),
+                // Origin and destination place names
+                Row(
+                  children: [
+                    // Origin
+                    Expanded(
+                      child: Text(
+                        flightInfo.originPlaceName ?? '',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                      ),
+                    ),
+                    // Destination
+                    Expanded(
+                      child: Text(
+                        flightInfo.destinationPlaceName ?? '',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Flight times
+                Row(
+                  children: [
+                    // Departure time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (flightInfo.departureTime != null)
+                            Text(
+                              _formatTime(flightInfo.departureTime!,
+                                  isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
+                          if (flightInfo.departureTime != null)
+                            Text(
+                              _formatDate(flightInfo.departureTime!,
+                                  isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Next day indicator (if applicable)
+                    if (_isNextDay()) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '+1',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 16,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Next day',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
+
+                    // Arrival time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (flightInfo.arrivalTime != null)
+                            Text(
+                              _formatTime(flightInfo.arrivalTime!, isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
+                          if (flightInfo.arrivalTime != null)
+                            Text(
+                              _formatDate(flightInfo.arrivalTime!, isUtc: true),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
+                              textAlign: TextAlign.end,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Additional flight details
+          if (_hasAdditionalDetails()) ...[
+            Divider(
+              color: Theme.of(context).colorScheme.outline,
+              thickness: 1.5,
+              height: 1.5,
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _buildAdditionalDetails(context),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _isNextDay() {
+    if (flightInfo.departureTime == null || flightInfo.arrivalTime == null) {
+      return false;
     }
 
-    if (_flightInfo.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    final depDate = flightInfo.departureTime!;
+    final arrDate = flightInfo.arrivalTime!;
+
+    return arrDate.day != depDate.day || arrDate.month != depDate.month;
+  }
+
+  bool _hasAdditionalDetails() {
+    return flightInfo.seat != null ||
+        flightInfo.gate != null ||
+        flightInfo.terminal != null ||
+        flightInfo.confirmationNumber != null ||
+        flightInfo.passengerName != null ||
+        flightInfo.classOfService != null;
+  }
+
+  Widget _buildAdditionalDetails(BuildContext context) {
+    final details = <String, String?>{
+      'Seat': flightInfo.seat,
+      'Gate': flightInfo.gate,
+      'Terminal': flightInfo.terminal,
+      'Class': flightInfo.classOfService,
+      'PNR': flightInfo.confirmationNumber,
+      'Passenger': flightInfo.passengerName,
+    };
+
+    final nonEmptyDetails = details.entries
+        .where((entry) => entry.value != null && entry.value!.isNotEmpty)
+        .toList();
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      alignment: WrapAlignment.spaceBetween,
+      children: nonEmptyDetails.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.flight_takeoff_outlined,
-              size: 48,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
             Text(
-              'No flight information available',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              entry.key,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
                         .withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
                   ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 2),
             Text(
-              'Upload flight tickets to see flight details here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.5),
+              entry.value!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
             ),
           ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        for (int i = 0; i < _flightInfo.length; i++) ...[
-          _FlightCard(flight: _flightInfo[i]),
-          if (i < _flightInfo.length - 1) const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-}
-
-class _FlightCard extends StatelessWidget {
-  const _FlightCard({required this.flight});
-
-  final FlightInformation flight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Flight header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  flight.flightNumber ?? 'Unknown',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                flight.airline ?? '',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
-              const Spacer(),
-              if (flight.classOfService != null)
-                Text(
-                  flight.classOfService!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.7),
-                      ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Flight route
-          Row(
-            children: [
-              // Origin
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      flight.originCode ?? '',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (flight.originPlaceName != null)
-                      Text(
-                        flight.originPlaceName!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.7),
-                            ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    if (flight.departureTime != null)
-                      Text(
-                        _formatTime(flight.departureTime!),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                  ],
-                ),
-              ),
-
-              // Arrow
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(
-                  Icons.arrow_forward,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-
-              // Destination
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      flight.destinationCode ?? '',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (flight.destinationPlaceName != null)
-                      Text(
-                        flight.destinationPlaceName!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.7),
-                            ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                      ),
-                    if (flight.arrivalTime != null)
-                      Text(
-                        _formatTime(flight.arrivalTime!),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Additional details
-          if (flight.seat != null ||
-              flight.gate != null ||
-              flight.terminal != null) ...[
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                if (flight.seat != null)
-                  _DetailChip(
-                    icon: Icons.airline_seat_recline_normal,
-                    label: 'Seat ${flight.seat}',
-                  ),
-                if (flight.gate != null)
-                  _DetailChip(
-                    icon: Icons.door_front_door,
-                    label: 'Gate ${flight.gate}',
-                  ),
-                if (flight.terminal != null)
-                  _DetailChip(
-                    icon: Icons.business,
-                    label: 'Terminal ${flight.terminal}',
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
-  String _formatTime(DateTime time) {
-    return DateFormat('MMM dd, HH:mm').format(time);
+  String _formatTime(DateTime dateTime, {bool isUtc = false}) {
+    final formatter = DateFormat('h:mm a');
+    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
   }
-}
 
-class _DetailChip extends StatelessWidget {
-  const _DetailChip({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.8),
-                ),
-          ),
-        ],
-      ),
-    );
+  String _formatDate(DateTime dateTime, {bool isUtc = false}) {
+    final formatter = DateFormat('EEE, MMM dd');
+    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
   }
 }
