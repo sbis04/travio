@@ -75,6 +75,9 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   // Sidebar state
   String _selectedSection = ''; // Will be set to first available section
 
+  // Map state
+  Set<Marker> _markers = {};
+
   @override
   void initState() {
     super.initState();
@@ -237,12 +240,52 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       });
 
       logPrint('✅ Loaded ${places.length} visit place(s)');
+
+      // Initialize markers after loading visit places
+      _initializeAllPlaceMarkers();
     } catch (e) {
       logPrint('❌ Error loading visit places: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _initializeAllPlaceMarkers() {
+    _updateMarkersWithSelection(null); // Initialize with no selection
+  }
+
+  void _updateMarkersWithSelection(String? selectedPlaceId) {
+    final markers = <Marker>{};
+
+    // Add markers for all visit places that have coordinates
+    for (final place in _visitPlaces) {
+      if (place.latitude != null && place.longitude != null) {
+        final isSelected = selectedPlaceId == place.placeId;
+
+        markers.add(
+          Marker(
+            markerId: MarkerId(place.placeId),
+            position: LatLng(place.latitude!, place.longitude!),
+            infoWindow: InfoWindow(
+              title: place.name,
+              snippet: place.displayAddress,
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              isSelected ? BitmapDescriptor.hueRed : BitmapDescriptor.hueBlue,
+            ),
+            alpha: isSelected || selectedPlaceId == null
+                ? 1.0
+                : 0.6, // Full opacity for selected, dimmed for others
+          ),
+        );
+      }
+    }
+
+    logPrint(
+        '🗺️ Updated ${markers.length} place markers (selected: $selectedPlaceId)');
+
+    setState(() => _markers = markers);
   }
 
   Future<void> _loadTripData() async {
@@ -280,6 +323,9 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     setState(() => _isMapLoading = false);
+
+    // Initialize map with all visit place markers
+    _initializeAllPlaceMarkers();
 
     // Center map on trip destination if coordinates available
     if (_trip?.latitude != null && _trip?.longitude != null) {
@@ -901,7 +947,10 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
             count: _visitPlaces.length,
             icon: Icons.place_rounded,
             initiallyExpanded: _selectedSection == 'places',
-            child: PlacesSection(visitPlaces: _visitPlaces),
+            child: PlacesSection(
+              visitPlaces: _visitPlaces,
+              onPlaceSelected: _onPlaceSelected,
+            ),
           ),
         ],
       ],
@@ -1052,6 +1101,10 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                   ? kGoogleMapsLightStyle
                   : kGoogleMapsDarkStyle,
               onMapCreated: _onMapCreated,
+              onTap: (LatLng position) {
+                // Reset selection when tapping on empty map area
+                _resetPlaceSelection();
+              },
               myLocationEnabled: false,
               buildingsEnabled: false,
               compassEnabled: false,
@@ -1068,16 +1121,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                 target: LatLng(_trip!.latitude!, _trip!.longitude!),
                 zoom: 12,
               ),
-              // markers: {
-              //   Marker(
-              //     markerId: MarkerId(_trip!.placeId),
-              //     position: LatLng(_trip!.latitude!, _trip!.longitude!),
-              //     infoWindow: InfoWindow(
-              //       title: _trip!.placeName,
-              //       snippet: _trip!.placeAddress,
-              //     ),
-              //   ),
-              // },
+              markers: _markers,
             ),
           )
         : Container(
@@ -1135,6 +1179,41 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       'Dec'
     ];
     return '${date.day} ${months[date.month - 1]}, ${date.year}';
+  }
+
+  Future<void> _onPlaceSelected(Place place) async {
+    if (_mapController == null ||
+        place.latitude == null ||
+        place.longitude == null) {
+      logPrint(
+          '❌ Cannot animate to place: Map controller or coordinates not available');
+      return;
+    }
+
+    try {
+      logPrint('📍 Animating map to place: ${place.name}');
+      logPrint('   Coordinates: ${place.latitude}, ${place.longitude}');
+
+      final placeLocation = LatLng(place.latitude!, place.longitude!);
+
+      // Update markers to highlight selected place
+      _updateMarkersWithSelection(place.placeId);
+
+      // Animate camera to the selected place
+      await _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(placeLocation, 12),
+      );
+
+      logPrint('✅ Map animated to place: ${place.name}');
+    } catch (e) {
+      logPrint('❌ Error animating map to place: $e');
+    }
+  }
+
+  void _resetPlaceSelection() {
+    logPrint(
+        '🔄 Resetting place selection - showing all markers at full opacity');
+    _updateMarkersWithSelection(null);
   }
 }
 

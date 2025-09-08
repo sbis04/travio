@@ -6,9 +6,11 @@ class PlacesSection extends StatelessWidget {
   const PlacesSection({
     super.key,
     required this.visitPlaces,
+    this.onPlaceSelected,
   });
 
   final List<Place> visitPlaces;
+  final Function(Place)? onPlaceSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +58,9 @@ class PlacesSection extends StatelessWidget {
           _PlaceCard(
             place: visitPlaces[i],
             onTap: () {
-              // TODO: Select the place in map and animate to it
+              if (onPlaceSelected != null) {
+                onPlaceSelected!(visitPlaces[i]);
+              }
             },
           ),
           const SizedBox(height: 16),
