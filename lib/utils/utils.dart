@@ -20,3 +20,13 @@ extension DateTimeExtension on DateTime {
 
   DateTime get endOfDay => DateTime(year, month, day, 23, 59);
 }
+
+extension StatefulWidgetExtensions on State<StatefulWidget> {
+  /// Check if the widget exist before safely setting state.
+  void safeSetState(VoidCallback fn) {
+    if (mounted) {
+      // ignore: invalid_use_of_protected_member
+      setState(fn);
+    }
+  }
+}

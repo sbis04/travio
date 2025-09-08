@@ -34,9 +34,102 @@
 
   <title>Travio</title>
   <link rel="manifest" href="manifest.json">
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD3bTPt8TFGJqmmQNtTR-8PgT0FM7TBrss&libraries=drawing"></script>
+
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #FFFDF7;
+    }
+
+    .loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .loader .logo {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        filter: blur(0px);
+        opacity: 1;
+        scale: 0.55;
+      }
+
+      50% {
+        filter: blur(1px);
+        opacity: 0.6;
+        scale: 0.5;
+      }
+
+      100% {
+        filter: blur(0px);
+        opacity: 1;
+        scale: 0.5;
+      }
+    }
+  </style>
 </head>
 
 <body>
+  <!-- Loading animation -->
+  <div class="loader">
+    <img class="logo" width="100" height="100" viewBox="0 0 40 31" fill="none" src="icons/icon-192.png" alt="Loading indicator..." />
+  </div>
+
+  <script>
+    // Hide the loading animation when Flutter is ready
+    window.addEventListener('load', function () {
+      // Check if Flutter is ready
+      if (window.flutter_web_optimizer) {
+        // Flutter web optimizer is available, hide loader immediately
+        const loader = document.querySelector('.loader');
+        if (loader) {
+          loader.style.display = 'none';
+        }
+      } else {
+        // Wait for Flutter to initialize
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max
+
+        const checkFlutterReady = function () {
+          attempts++;
+
+          // Check if Flutter has initialized by looking for the main app container
+          const flutterApp = document.querySelector('flt-glass-pane') ||
+            document.querySelector('#flutter_target') ||
+            document.querySelector('[data-flutter-view]');
+
+          if (flutterApp || attempts >= maxAttempts) {
+            const loader = document.querySelector('.loader');
+            if (loader) {
+              loader.style.opacity = '0';
+              loader.style.transition = 'opacity 0.3s ease-out';
+              setTimeout(function () {
+                loader.style.display = 'none';
+              }, 300);
+            }
+          } else {
+            setTimeout(checkFlutterReady, 100);
+          }
+        };
+
+        checkFlutterReady();
+      }
+    });
+  </script>
+
+  <!-- Load and run Flutter entrypoint -->
   <script src="flutter_bootstrap.js?{{TIMESTAMP}}" async></script>
 </body>
 

@@ -11,15 +11,24 @@ import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/auth/auth_dialog.dart';
 
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key, this.hideButtons = false});
+  const AppHeader({
+    super.key,
+    this.hideButtons = false,
+    this.fullWidth = false,
+  });
 
   final bool hideButtons;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
     return ResponsiveContainer(
+      maxWidth: fullWidth
+          ? MediaQuery.sizeOf(context).width
+          : ResponsiveBreakpoints.desktop,
       child: ClipRect(
         child: BackdropFilter(
+          enabled: !fullWidth,
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
             height: kAppBarHeight,

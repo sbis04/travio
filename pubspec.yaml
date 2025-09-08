@@ -33,6 +33,7 @@ dependencies:
   collection: ^1.19.1
   dotted_border: ^3.1.0
   google_sign_in: ^6.3.0
+  google_maps_flutter: ^2.13.1
 
 dev_dependencies:
   flutter_test:

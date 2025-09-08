@@ -4,6 +4,7 @@ import 'package:travio/screens/about_page.dart';
 import 'package:travio/screens/contact_page.dart';
 import 'package:travio/screens/landing_page.dart';
 import 'package:travio/screens/trip_details_page.dart';
+import 'package:travio/screens/trip_planning_page.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -28,6 +29,19 @@ class AppRouter {
           final tripId = state.pathParameters['tripId'] ?? '';
           return _buildPageWithFadeTransition(
             child: TripDetailsPage(tripId: tripId),
+            settings: state,
+          );
+        },
+      ),
+
+      // Trip planning page route
+      GoRoute(
+        path: '/trip/:tripId/planning',
+        name: 'trip-planning',
+        pageBuilder: (context, state) {
+          final tripId = state.pathParameters['tripId'] ?? '';
+          return _buildPageWithFadeTransition(
+            child: TripPlanningPage(tripId: tripId),
             settings: state,
           );
         },
@@ -141,6 +155,10 @@ extension AppNavigation on BuildContext {
     } else {
       go('/planner'); // Will redirect to home
     }
+  }
+
+  void goToTripPlanning(String tripId) {
+    goNamed('trip-planning', pathParameters: {'tripId': tripId});
   }
 
   void goToAbout() => go('/about');
