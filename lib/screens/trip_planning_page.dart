@@ -741,7 +741,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
               children: [
                 if (item.hasFlights) ...[
                   Icon(
-                    Icons.flight_takeoff,
+                    Icons.flight_land_rounded,
                     size: 12,
                     color: Theme.of(context)
                         .colorScheme
@@ -752,7 +752,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
                 ],
                 if (item.hasAccommodations) ...[
                   Icon(
-                    Icons.hotel,
+                    Icons.hotel_rounded,
                     size: 12,
                     color: Theme.of(context)
                         .colorScheme
@@ -904,11 +904,11 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       List<AccommodationInformation> dayAccommodations) {
     // Priority: Flight > Accommodation > General day
     if (dayFlights.isNotEmpty) {
-      return Icons.flight_takeoff;
+      return Icons.flight_land_rounded;
     } else if (dayAccommodations.isNotEmpty) {
-      return Icons.hotel;
+      return Icons.hotel_rounded;
     } else {
-      return Icons.calendar_today;
+      return Icons.calendar_today_rounded;
     }
   }
 
@@ -1135,7 +1135,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
               webCameraControlEnabled: false,
               initialCameraPosition: CameraPosition(
                 target: LatLng(_trip!.latitude!, _trip!.longitude!),
-                zoom: 12,
+                zoom: 13,
               ),
               markers: _markers,
             ),
@@ -1217,7 +1217,7 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
 
       // Animate camera to the selected place
       await _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(placeLocation, 12),
+        CameraUpdate.newLatLngZoom(placeLocation, 13.5),
       );
 
       logPrint('✅ Map animated to place: ${place.name}');

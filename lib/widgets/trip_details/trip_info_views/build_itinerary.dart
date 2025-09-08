@@ -894,25 +894,33 @@ class _FlightContent extends StatelessWidget {
 
   final List<FlightInformation> flightInfo;
 
-  String _formatTime(DateTime dateTime, {bool isUtc = false}) {
+  String _formatTime(DateTime dateTime) {
     final formatter = DateFormat('h:mm a');
-    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
+    return formatter.format(dateTime.toUtc());
   }
 
-  String _formatDate(DateTime dateTime, {bool isUtc = false}) {
+  String _formatDate(DateTime dateTime) {
     final formatter = DateFormat('EEE, MMM dd');
-    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
+    return formatter.format(dateTime.toUtc());
   }
 
-  bool _isNextDay(FlightInformation flight) {
+  int? _getDaysLater(FlightInformation flight) {
     if (flight.departureTime == null || flight.arrivalTime == null) {
-      return false;
+      return null;
     }
 
-    final depDate = flight.departureTime!;
-    final arrDate = flight.arrivalTime!;
+    final depDate = flight.departureTime!.toUtc();
+    final arrDate = flight.arrivalTime!.toUtc();
 
-    return arrDate.day != depDate.day || arrDate.month != depDate.month;
+    // Extract just the date parts (ignore time)
+    final depDateOnly = DateTime(depDate.year, depDate.month, depDate.day);
+    final arrDateOnly = DateTime(arrDate.year, arrDate.month, arrDate.day);
+
+    // Calculate the difference in calendar days
+    final daysDifference = arrDateOnly.difference(depDateOnly).inDays;
+
+    // Return the number of days later if different calendar day, otherwise null
+    return daysDifference > 0 ? daysDifference : null;
   }
 
   @override
@@ -1065,8 +1073,9 @@ class _FlightContent extends StatelessWidget {
                             children: [
                               if (flight.departureTime != null)
                                 Text(
-                                  _formatTime(flight.departureTime!,
-                                      isUtc: true),
+                                  _formatTime(
+                                    flight.departureTime!,
+                                  ),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyLarge
@@ -1077,8 +1086,9 @@ class _FlightContent extends StatelessWidget {
                                 ),
                               if (flight.departureTime != null)
                                 Text(
-                                  _formatDate(flight.departureTime!,
-                                      isUtc: true),
+                                  _formatDate(
+                                    flight.departureTime!,
+                                  ),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyMedium
@@ -1091,59 +1101,36 @@ class _FlightContent extends StatelessWidget {
                           ),
                         ),
 
-                        // Next day indicator (if applicable)
-                        if (_isNextDay(flight)) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '+1',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.arrow_forward,
-                                  size: 16,
-                                  color: Colors.green,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Next day',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                        ],
-
                         // Arrival time
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               if (flight.arrivalTime != null)
-                                Text(
-                                  _formatTime(flight.arrivalTime!, isUtc: true),
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: _formatTime(
+                                          flight.arrivalTime!,
+                                        ),
+                                        children: [
+                                          // Next day indicator (if applicable)
+                                          if (_getDaysLater(flight) != null)
+                                            TextSpan(
+                                              text: '⁺${_getDaysLater(flight)}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.normal,
+                                                fontFeatures: [
+                                                  FontFeature.superscripts()
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  // add +1 to superscript
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyLarge
@@ -1154,7 +1141,7 @@ class _FlightContent extends StatelessWidget {
                                 ),
                               if (flight.arrivalTime != null)
                                 Text(
-                                  _formatDate(flight.arrivalTime!, isUtc: true),
+                                  _formatDate(flight.arrivalTime!),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall
@@ -1351,563 +1338,3 @@ class _HotelContent extends StatelessWidget {
     );
   }
 }
-
-/// Flight details section that replaces the add card when flights are available
-// class _FlightDetailsSection extends StatelessWidget {
-//   const _FlightDetailsSection({
-//     required this.tripId,
-//     required this.flightDocuments,
-//   });
-
-//   final String tripId;
-//   final List<TripDocument> flightDocuments;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         // Header
-//         Row(
-//           children: [
-//             Text(
-//               'Flight Details',
-//               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-//                     color: Theme.of(context).colorScheme.onSurface,
-//                     fontWeight: FontWeight.w600,
-//                   ),
-//             ),
-//             const Spacer(),
-//             Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-//               decoration: BoxDecoration(
-//                 color: Theme.of(context).colorScheme.primaryContainer,
-//                 borderRadius: BorderRadius.circular(16),
-//               ),
-//               child: Text(
-//                 '${flightDocuments.length} document${flightDocuments.length == 1 ? '' : 's'}',
-//                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-//                       color: Theme.of(context).colorScheme.onPrimaryContainer,
-//                       fontWeight: FontWeight.w600,
-//                     ),
-//               ),
-//             ),
-//           ],
-//         ),
-
-//         const SizedBox(height: 12),
-
-//         // Flight documents list
-//         ...flightDocuments.asMap().entries.map((entry) {
-//           final document = entry.value;
-
-//           return Padding(
-//             padding: const EdgeInsets.only(bottom: 8),
-//             child: _FlightDocumentDisplay(
-//               documentId: document.id,
-//               tripId: tripId,
-//             ),
-//           );
-//         }),
-//       ],
-//     );
-//   }
-// }
-
-// /// Loads and displays flight info from subcollections using stream listeners
-// class _FlightDocumentDisplay extends StatefulWidget {
-//   const _FlightDocumentDisplay({
-//     required this.tripId,
-//     required this.documentId,
-//   });
-
-//   final String tripId;
-//   final String documentId;
-
-//   @override
-//   State<_FlightDocumentDisplay> createState() => _FlightDocumentDisplayState();
-// }
-
-// class _FlightDocumentDisplayState extends State<_FlightDocumentDisplay> {
-//   List<FlightInformation> _flights = [];
-//   bool _isLoading = true;
-//   String? _error;
-//   late Stream<List<FlightInformation>> _flightInfoStream;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _setupFlightInfoStream();
-//   }
-
-//   void _setupFlightInfoStream() {
-//     _flightInfoStream = DocumentService.firestore
-//         .collection('trips')
-//         .doc(widget.tripId)
-//         .collection('documents')
-//         .doc(widget.documentId)
-//         .collection('flight_info')
-//         .orderBy('flight_index')
-//         .snapshots()
-//         .map((snapshot) {
-//       final flights = <FlightInformation>[];
-//       for (final doc in snapshot.docs) {
-//         try {
-//           final flightInfo = FlightInformation.fromFirestore(doc.data());
-//           flights.add(flightInfo);
-//         } catch (e) {
-//           logPrint('⚠️ Error parsing flight ${doc.id}: $e');
-//         }
-//       }
-//       return flights;
-//     });
-
-//     _flightInfoStream.listen(
-//       (flights) {
-//         if (mounted) {
-//           setState(() {
-//             _flights = flights;
-//             _isLoading = false;
-//             _error = null;
-//           });
-//         }
-//       },
-//       onError: (error) {
-//         if (mounted) {
-//           setState(() {
-//             _error = error.toString();
-//             _isLoading = false;
-//           });
-//         }
-//       },
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (_isLoading) {
-//       return SizedBox();
-//     }
-
-//     if (_error != null) {
-//       return Padding(
-//         padding: const EdgeInsets.all(20.0),
-//         child: Text(
-//           'Error loading flight information',
-//           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-//                 color: Theme.of(context).colorScheme.error,
-//               ),
-//         ),
-//       );
-//     }
-
-//     if (_flights.isEmpty) {
-//       return Padding(
-//         padding: const EdgeInsets.all(20.0),
-//         child: Text(
-//           'Flight information is being processed...',
-//           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-//                 color: Theme.of(context)
-//                     .colorScheme
-//                     .onSurface
-//                     .withValues(alpha: 0.6),
-//               ),
-//         ),
-//       );
-//     }
-
-//     return ListView.separated(
-//       shrinkWrap: true,
-//       physics: const NeverScrollableScrollPhysics(),
-//       itemCount: _flights.length,
-//       separatorBuilder: (_, __) => const SizedBox(height: 16),
-//       itemBuilder: (_, index) {
-//         final flightInfo = _flights[index];
-//         return _FlightInfoDisplay(flightInfo: flightInfo);
-//       },
-//     );
-//   }
-// }
-
-// /// Individual flight display matching the mockup design
-// class _FlightInfoDisplay extends StatelessWidget {
-//   const _FlightInfoDisplay({
-//     required this.flightInfo,
-//   });
-
-//   final FlightInformation flightInfo;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       decoration: BoxDecoration(
-//         color: Theme.of(context).colorScheme.surface,
-//         borderRadius: BorderRadius.circular(16),
-//         border: Border.all(
-//           color: Theme.of(context).colorScheme.outline,
-//           width: 1.5,
-//         ),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withValues(alpha: 0.1),
-//             blurRadius: 10,
-//             offset: const Offset(0, 5),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         children: [
-//           Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-//             child: Column(
-//               children: [
-//                 // Flight header (airline and flight number)
-//                 Row(
-//                   mainAxisAlignment: MainAxisAlignment.end,
-//                   children: [
-//                     Text(
-//                       flightInfo.airline ?? '',
-//                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-//                             fontWeight: FontWeight.w600,
-//                             color: Theme.of(context)
-//                                 .colorScheme
-//                                 .onSurface
-//                                 .withValues(alpha: 0.5),
-//                           ),
-//                     ),
-//                     SizedBox(
-//                       height: 16,
-//                       child: VerticalDivider(
-//                         color: Theme.of(context)
-//                             .colorScheme
-//                             .onSurface
-//                             .withValues(alpha: 0.3),
-//                         thickness: 1,
-//                         width: 16,
-//                       ),
-//                     ),
-//                     if (flightInfo.flightNumber != null)
-//                       Text(
-//                         flightInfo.flightNumber!,
-//                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-//                               fontWeight: FontWeight.w600,
-//                               color: Theme.of(context)
-//                                   .colorScheme
-//                                   .onSurface
-//                                   .withValues(alpha: 0.5),
-//                             ),
-//                       ),
-//                   ],
-//                 ),
-//                 // Flight route with airplane icon
-//                 Row(
-//                   children: [
-//                     Text(
-//                       flightInfo.originCode ?? '',
-//                       style:
-//                           Theme.of(context).textTheme.headlineLarge?.copyWith(
-//                                 fontWeight: FontWeight.bold,
-//                                 fontSize: 40,
-//                                 color: Theme.of(context).colorScheme.primary,
-//                               ),
-//                     ),
-//                     Expanded(
-//                       child: Row(
-//                         children: [
-//                           Expanded(
-//                             child: Padding(
-//                               padding:
-//                                   const EdgeInsets.symmetric(horizontal: 10),
-//                               child: Container(
-//                                 width: double.infinity,
-//                                 height: 1,
-//                                 color: Theme.of(context).colorScheme.primary,
-//                               ),
-//                             ),
-//                           ),
-//                           Transform.rotate(
-//                             angle: pi / 2,
-//                             child: Icon(
-//                               Icons.flight_rounded,
-//                               size: 40,
-//                               color: Theme.of(context).colorScheme.primary,
-//                             ),
-//                           ),
-//                           Expanded(
-//                             child: Padding(
-//                               padding:
-//                                   const EdgeInsets.symmetric(horizontal: 10),
-//                               child: Container(
-//                                 width: double.infinity,
-//                                 height: 1,
-//                                 color: Theme.of(context).colorScheme.primary,
-//                               ),
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                     Text(
-//                       flightInfo.destinationCode ?? '',
-//                       style:
-//                           Theme.of(context).textTheme.headlineLarge?.copyWith(
-//                                 fontWeight: FontWeight.bold,
-//                                 fontSize: 40,
-//                                 color: Theme.of(context).colorScheme.primary,
-//                               ),
-//                     ),
-//                   ],
-//                 ),
-//                 // Origin and destination place names
-//                 Row(
-//                   children: [
-//                     // Origin
-//                     Expanded(
-//                       child: Text(
-//                         flightInfo.originPlaceName ?? '',
-//                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-//                               color: Theme.of(context)
-//                                   .colorScheme
-//                                   .onSurface
-//                                   .withValues(alpha: 0.7),
-//                             ),
-//                       ),
-//                     ),
-//                     // Destination
-//                     Expanded(
-//                       child: Text(
-//                         flightInfo.destinationPlaceName ?? '',
-//                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-//                               color: Theme.of(context)
-//                                   .colorScheme
-//                                   .onSurface
-//                                   .withValues(alpha: 0.7),
-//                             ),
-//                         textAlign: TextAlign.end,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//                 const SizedBox(height: 8),
-//                 // Flight times
-//                 Row(
-//                   children: [
-//                     // Departure time
-//                     Expanded(
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           if (flightInfo.departureTime != null)
-//                             Text(
-//                               _formatTime(flightInfo.departureTime!,
-//                                   isUtc: true),
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .headlineMedium
-//                                   ?.copyWith(
-//                                     fontWeight: FontWeight.bold,
-//                                     color:
-//                                         Theme.of(context).colorScheme.onSurface,
-//                                   ),
-//                             ),
-//                           if (flightInfo.departureTime != null)
-//                             Text(
-//                               _formatDate(flightInfo.departureTime!,
-//                                   isUtc: true),
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .bodyMedium
-//                                   ?.copyWith(
-//                                     color: Theme.of(context)
-//                                         .colorScheme
-//                                         .onSurface
-//                                         .withValues(alpha: 0.7),
-//                                   ),
-//                             ),
-//                         ],
-//                       ),
-//                     ),
-
-//                     // Next day indicator (if applicable)
-//                     if (_isNextDay()) ...[
-//                       Container(
-//                         padding: const EdgeInsets.symmetric(
-//                             horizontal: 8, vertical: 4),
-//                         decoration: BoxDecoration(
-//                           color: Colors.green.withValues(alpha: 0.2),
-//                           borderRadius: BorderRadius.circular(8),
-//                         ),
-//                         child: Row(
-//                           mainAxisSize: MainAxisSize.min,
-//                           children: [
-//                             Text(
-//                               '+1',
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .bodySmall
-//                                   ?.copyWith(
-//                                     color: Colors.green,
-//                                     fontWeight: FontWeight.w600,
-//                                   ),
-//                             ),
-//                             const SizedBox(width: 4),
-//                             Icon(
-//                               Icons.arrow_forward,
-//                               size: 16,
-//                               color: Colors.green,
-//                             ),
-//                             const SizedBox(width: 4),
-//                             Text(
-//                               'Next day',
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .bodySmall
-//                                   ?.copyWith(
-//                                     color: Colors.green,
-//                                     fontWeight: FontWeight.w600,
-//                                   ),
-//                             ),
-//                           ],
-//                         ),
-//                       ),
-//                       const SizedBox(width: 16),
-//                     ],
-
-//                     // Arrival time
-//                     Expanded(
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.end,
-//                         children: [
-//                           if (flightInfo.arrivalTime != null)
-//                             Text(
-//                               _formatTime(flightInfo.arrivalTime!, isUtc: true),
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .headlineMedium
-//                                   ?.copyWith(
-//                                     fontWeight: FontWeight.bold,
-//                                     color:
-//                                         Theme.of(context).colorScheme.onSurface,
-//                                   ),
-//                             ),
-//                           if (flightInfo.arrivalTime != null)
-//                             Text(
-//                               _formatDate(flightInfo.arrivalTime!, isUtc: true),
-//                               style: Theme.of(context)
-//                                   .textTheme
-//                                   .bodyMedium
-//                                   ?.copyWith(
-//                                     color: Theme.of(context)
-//                                         .colorScheme
-//                                         .onSurface
-//                                         .withValues(alpha: 0.7),
-//                                   ),
-//                               textAlign: TextAlign.end,
-//                             ),
-//                         ],
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // Additional flight details
-//           if (_hasAdditionalDetails()) ...[
-//             Divider(
-//               color: Theme.of(context).colorScheme.outline,
-//               thickness: 1.5,
-//               height: 1.5,
-//             ),
-//             Container(
-//               width: double.infinity,
-//               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-//               decoration: BoxDecoration(
-//                 color: Theme.of(context).colorScheme.surfaceContainerHigh,
-//                 borderRadius: BorderRadius.circular(12),
-//               ),
-//               child: _buildAdditionalDetails(context),
-//             ),
-//           ],
-//         ],
-//       ),
-//     );
-//   }
-
-//   bool _isNextDay() {
-//     if (flightInfo.departureTime == null || flightInfo.arrivalTime == null) {
-//       return false;
-//     }
-
-//     final depDate = flightInfo.departureTime!;
-//     final arrDate = flightInfo.arrivalTime!;
-
-//     return arrDate.day != depDate.day || arrDate.month != depDate.month;
-//   }
-
-//   bool _hasAdditionalDetails() {
-//     return flightInfo.seat != null ||
-//         flightInfo.gate != null ||
-//         flightInfo.terminal != null ||
-//         flightInfo.confirmationNumber != null ||
-//         flightInfo.passengerName != null ||
-//         flightInfo.classOfService != null;
-//   }
-
-//   Widget _buildAdditionalDetails(BuildContext context) {
-//     final details = <String, String?>{
-//       'Seat': flightInfo.seat,
-//       'Gate': flightInfo.gate,
-//       'Terminal': flightInfo.terminal,
-//       'Class': flightInfo.classOfService,
-//       'PNR': flightInfo.confirmationNumber,
-//       'Passenger': flightInfo.passengerName,
-//     };
-
-//     final nonEmptyDetails = details.entries
-//         .where((entry) => entry.value != null && entry.value!.isNotEmpty)
-//         .toList();
-
-//     return Wrap(
-//       spacing: 20,
-//       runSpacing: 12,
-//       alignment: WrapAlignment.spaceBetween,
-//       children: nonEmptyDetails.map((entry) {
-//         return Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             Text(
-//               entry.key,
-//               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-//                     color: Theme.of(context)
-//                         .colorScheme
-//                         .onSurface
-//                         .withValues(alpha: 0.6),
-//                     fontWeight: FontWeight.w500,
-//                   ),
-//             ),
-//             const SizedBox(height: 2),
-//             Text(
-//               entry.value!,
-//               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-//                     fontWeight: FontWeight.w600,
-//                   ),
-//             ),
-//           ],
-//         );
-//       }).toList(),
-//     );
-//   }
-
-//   String _formatTime(DateTime dateTime, {bool isUtc = false}) {
-//     final formatter = DateFormat('h:mm a');
-//     return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
-//   }
-
-//   String _formatDate(DateTime dateTime, {bool isUtc = false}) {
-//     final formatter = DateFormat('EEE, MMM dd');
-//     return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
-//   }
-// }

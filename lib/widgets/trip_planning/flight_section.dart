@@ -202,8 +202,7 @@ class _FlightInfoDisplay extends StatelessWidget {
                         children: [
                           if (flightInfo.departureTime != null)
                             Text(
-                              _formatTime(flightInfo.departureTime!,
-                                  isUtc: true),
+                              _formatTime(flightInfo.departureTime!),
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineSmall
@@ -215,8 +214,7 @@ class _FlightInfoDisplay extends StatelessWidget {
                             ),
                           if (flightInfo.departureTime != null)
                             Text(
-                              _formatDate(flightInfo.departureTime!,
-                                  isUtc: true),
+                              _formatDate(flightInfo.departureTime!),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -231,59 +229,30 @@ class _FlightInfoDisplay extends StatelessWidget {
                       ),
                     ),
 
-                    // Next day indicator (if applicable)
-                    if (_isNextDay()) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '+1',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_forward,
-                              size: 16,
-                              color: Colors.green,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Next day',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                    ],
-
                     // Arrival time
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           if (flightInfo.arrivalTime != null)
-                            Text(
-                              _formatTime(flightInfo.arrivalTime!, isUtc: true),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: _formatTime(flightInfo.arrivalTime!),
+                                  ),
+                                  if (_getDaysLater() != null)
+                                    TextSpan(
+                                      text: '⁺${_getDaysLater()}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.normal,
+                                        fontFeatures: [
+                                          FontFeature.superscripts()
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineSmall
@@ -295,7 +264,7 @@ class _FlightInfoDisplay extends StatelessWidget {
                             ),
                           if (flightInfo.arrivalTime != null)
                             Text(
-                              _formatDate(flightInfo.arrivalTime!, isUtc: true),
+                              _formatDate(flightInfo.arrivalTime!),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -338,15 +307,23 @@ class _FlightInfoDisplay extends StatelessWidget {
     );
   }
 
-  bool _isNextDay() {
+  int? _getDaysLater() {
     if (flightInfo.departureTime == null || flightInfo.arrivalTime == null) {
-      return false;
+      return null;
     }
 
-    final depDate = flightInfo.departureTime!;
-    final arrDate = flightInfo.arrivalTime!;
+    final depDate = flightInfo.departureTime!.toUtc();
+    final arrDate = flightInfo.arrivalTime!.toUtc();
 
-    return arrDate.day != depDate.day || arrDate.month != depDate.month;
+    // Extract just the date parts (ignore time)
+    final depDateOnly = DateTime(depDate.year, depDate.month, depDate.day);
+    final arrDateOnly = DateTime(arrDate.year, arrDate.month, arrDate.day);
+
+    // Calculate the difference in calendar days
+    final daysDifference = arrDateOnly.difference(depDateOnly).inDays;
+
+    // Return the number of days later if different calendar day, otherwise null
+    return daysDifference > 0 ? daysDifference : null;
   }
 
   bool _hasAdditionalDetails() {
@@ -404,13 +381,13 @@ class _FlightInfoDisplay extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime dateTime, {bool isUtc = false}) {
+  String _formatTime(DateTime dateTime) {
     final formatter = DateFormat('h:mm a');
-    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
+    return formatter.format(dateTime.toUtc());
   }
 
-  String _formatDate(DateTime dateTime, {bool isUtc = false}) {
+  String _formatDate(DateTime dateTime) {
     final formatter = DateFormat('EEE, MMM dd');
-    return formatter.format(isUtc ? dateTime.toUtc() : dateTime);
+    return formatter.format(dateTime.toUtc());
   }
 }
