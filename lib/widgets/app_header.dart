@@ -15,10 +15,12 @@ class AppHeader extends StatelessWidget {
     super.key,
     this.hideButtons = false,
     this.fullWidth = false,
+    this.hideThemeToggle = false,
   });
 
   final bool hideButtons;
   final bool fullWidth;
+  final bool hideThemeToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +61,7 @@ class AppHeader extends StatelessWidget {
                   const SizedBox(width: 32),
                 ],
                 // Theme toggle button
-                AppThemeToggle(),
+                if (!hideThemeToggle) AppThemeToggle(),
                 const SizedBox(width: 12),
                 // Auth buttons - conditional based on auth state
                 StreamBuilder<User?>(

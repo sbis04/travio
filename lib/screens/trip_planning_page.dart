@@ -6,12 +6,14 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:travio/models/document.dart';
 import 'package:travio/models/place.dart';
 import 'package:travio/models/trip.dart';
+import 'package:travio/services/auth_service.dart';
 import 'package:travio/services/document_service.dart';
 import 'package:travio/services/place_photo_cache_service.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/app_header.dart';
 import 'package:travio/widgets/page_loading_indicator.dart';
+import 'package:travio/widgets/restricted_access_view.dart';
 import 'package:travio/widgets/trip_planning/auto_sliding_images.dart';
 import 'package:travio/widgets/trip_planning/expandable_section.dart';
 import 'package:travio/widgets/trip_planning/flight_section.dart';
@@ -71,6 +73,8 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   List<FlightInformation> _flightInfo = [];
   List<AccommodationInformation> _accommodationInfo = [];
   GoogleMapController? _mapController;
+  bool get _userHasAccess =>
+      (_trip?.isPublic ?? true) || _trip?.userUid == AuthService.currentUserUid;
 
   // Sidebar state
   String _selectedSection = ''; // Will be set to first available section
@@ -346,36 +350,48 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       isLoading: _isLoading,
       child: _trip == null
           ? const SizedBox()
-          : Stack(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          : !_userHasAccess
+              ? Column(
                   children: [
-                    // Left Side - Content
-                    SizedBox(
-                      width: planningAreaWidth,
+                    AppHeader(
+                      hideButtons: true,
+                      hideThemeToggle: true,
                     ),
-                    // Right Side - Map
                     Expanded(
-                      child: _buildMapSection(),
+                      child: RestrictedAccessView(),
+                    ),
+                  ],
+                )
+              : Stack(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Side - Content
+                        SizedBox(
+                          width: planningAreaWidth,
+                        ),
+                        // Right Side - Map
+                        Expanded(
+                          child: _buildMapSection(),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Side - Content
+                        SizedBox(
+                            width: planningAreaWidth,
+                            child: _buildContentSection()),
+                        // Right Side - Map
+                        Expanded(
+                          child: const SizedBox(),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left Side - Content
-                    SizedBox(
-                        width: planningAreaWidth,
-                        child: _buildContentSection()),
-                    // Right Side - Map
-                    Expanded(
-                      child: const SizedBox(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
     );
   }
 
