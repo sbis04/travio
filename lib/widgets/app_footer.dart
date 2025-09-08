@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:travio/utils/responsive.dart';
+import 'package:travio/widgets/app_header.dart';
 
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
@@ -46,23 +47,7 @@ class _FooterDesktop extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.flight_takeoff,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Travio',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                    ],
-                  ),
+                  AppLogo(),
                   const SizedBox(height: 16),
                   Text(
                     'Plan your perfect trip with confidence. Discover, organize, and share your travel experiences.',
@@ -81,21 +66,21 @@ class _FooterDesktop extends StatelessWidget {
             Expanded(
               child: _FooterColumn(
                 title: 'Product',
-                links: ['Features', 'Pricing', 'Templates', 'Integrations'],
+                links: ['Features', 'Pricing'],
               ),
             ),
             const SizedBox(width: 32),
             Expanded(
               child: _FooterColumn(
                 title: 'Company',
-                links: ['About', 'Blog', 'Careers', 'Contact'],
+                links: ['About', 'Blog', 'Contact'],
               ),
             ),
             const SizedBox(width: 32),
             Expanded(
               child: _FooterColumn(
                 title: 'Support',
-                links: ['Help Center', 'Privacy', 'Terms', 'Status'],
+                links: ['Help Center', 'Privacy', 'Terms'],
               ),
             ),
           ],
