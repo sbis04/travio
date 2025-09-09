@@ -32,7 +32,7 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
   final FocusNode _placeTextFocusNode = FocusNode();
 
   bool _isLoading = false;
-  List<Trip> _userTrips = [];
+  final List<Trip> _userTrips = [];
   StreamSubscription<User?>? _authSubscription;
 
   @override
@@ -64,11 +64,11 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
 
     // Listen to auth state changes to load user trips
     _authSubscription = AuthService.authStateChanges.listen((user) {
+      _userTrips.clear();
       if (user != null) {
         _loadUserTrips();
-      } else {
-        setState(() => _userTrips = []);
       }
+      setState(() {});
     });
 
     // Load trips if user is already signed in
@@ -92,7 +92,7 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
       final trips = await TripService.getCurrentUserTrips();
 
       if (mounted) {
-        setState(() => _userTrips = trips);
+        setState(() => _userTrips.addAll(trips));
         logPrint('✅ Loaded ${trips.length} user trip(s)');
       }
     } catch (e) {
