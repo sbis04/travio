@@ -95,6 +95,7 @@ class UserTripsSection extends StatelessWidget {
                     right: index < trips.length - 1 ? 16 : 0,
                   ),
                   child: _TripCard(
+                    key: ValueKey(trips[index].id),
                     trip: trips[index],
                     onTap: () => onTripSelected(trips[index]),
                   ),
@@ -110,6 +111,7 @@ class UserTripsSection extends StatelessWidget {
 
 class _TripCard extends StatefulWidget {
   const _TripCard({
+    super.key,
     required this.trip,
     required this.onTap,
   });
