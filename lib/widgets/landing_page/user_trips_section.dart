@@ -86,7 +86,11 @@ class UserTripsSection extends StatelessWidget {
           SizedBox(
             height: 280,
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                bottom: 20,
+              ),
               scrollDirection: Axis.horizontal,
               itemCount: trips.length,
               itemBuilder: (context, index) {

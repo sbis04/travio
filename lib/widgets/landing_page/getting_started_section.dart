@@ -92,7 +92,9 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
       final trips = await TripService.getCurrentUserTrips();
 
       if (mounted) {
-        setState(() => _userTrips.addAll(trips));
+        setState(() => _userTrips
+          ..clear()
+          ..addAll(trips));
         logPrint('✅ Loaded ${trips.length} user trip(s)');
       }
     } catch (e) {
