@@ -171,6 +171,7 @@ class Trip {
 
 enum TripStatus {
   planning,
+  ready,
   active,
   completed,
   cancelled,

@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:travio/models/place.dart';
+import 'package:travio/models/trip.dart';
 import 'package:travio/router/app_router.dart';
+import 'package:travio/services/auth_service.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
 import 'package:travio/widgets/hoverable_image.dart';
 import 'package:travio/widgets/place_search_field.dart';
 import 'package:travio/widgets/landing_page/popular_destinations.dart';
+import 'package:travio/widgets/landing_page/user_trips_section.dart';
 
 class GettingStartedSection extends StatefulWidget {
   const GettingStartedSection({
@@ -26,6 +32,8 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
   final FocusNode _placeTextFocusNode = FocusNode();
 
   bool _isLoading = false;
+  List<Trip> _userTrips = [];
+  StreamSubscription<User?>? _authSubscription;
 
   @override
   void initState() {
@@ -53,13 +61,43 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
         );
       }
     });
+
+    // Listen to auth state changes to load user trips
+    _authSubscription = AuthService.authStateChanges.listen((user) {
+      if (user != null) {
+        _loadUserTrips();
+      } else {
+        setState(() => _userTrips = []);
+      }
+    });
+
+    // Load trips if user is already signed in
+    if (AuthService.isSignedIn) {
+      _loadUserTrips();
+    }
   }
 
   @override
   void dispose() {
     _placeTextController.dispose();
     _placeTextFocusNode.dispose();
+    _authSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadUserTrips() async {
+    try {
+      logPrint('📱 Loading user trips...');
+
+      final trips = await TripService.getCurrentUserTrips();
+
+      if (mounted) {
+        setState(() => _userTrips = trips);
+        logPrint('✅ Loaded ${trips.length} user trip(s)');
+      }
+    } catch (e) {
+      logPrint('❌ Error loading user trips: $e');
+    }
   }
 
   Future<void> _onPlaceSelected(Place selectedPlace) async {
@@ -82,7 +120,7 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
       if (tripId != null) {
         // Navigate to trip planner with trip ID
         if (!mounted) return;
-        context.goToTripPlanner(tripId: tripId);
+        context.goToTripDetails(tripId: tripId);
       } else {
         logPrint('❌ Failed to create trip');
       }
@@ -202,6 +240,24 @@ class _GettingStartedSectionState extends State<GettingStartedSection> {
             ],
           ),
         ),
+        // Show user's trips if signed in (including anonymous users)
+        AnimatedSize(
+          duration: 300.ms,
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: AuthService.isSignedIn && _userTrips.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 100),
+                  child: UserTripsSection(
+                    trips: _userTrips,
+                    onTripSelected: (trip) => trip.status == TripStatus.ready
+                        ? context.goToTripPlanning(trip.id)
+                        : context.goToTripDetails(tripId: trip.id),
+                  ),
+                )
+              : SizedBox(width: double.infinity),
+        ),
+
         PopularDestinations(
           scrollController: widget.landingScrollController,
           onPlaceSelected: _onPlaceSelectedFromCarousel,

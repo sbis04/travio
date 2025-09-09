@@ -119,11 +119,11 @@ extension AppNavigation on BuildContext {
     goNamed('trip', pathParameters: {'tripId': tripId});
   }
 
-  void goToTripPlanner({String? tripId}) {
+  void goToTripDetails({String? tripId}) {
     if (tripId != null) {
       goToTrip(tripId);
     } else {
-      go('/planner'); // Will redirect to home
+      go('/');
     }
   }
 

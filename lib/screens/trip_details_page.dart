@@ -44,7 +44,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         if (_isAuthenticated) {
           Future.delayed(
             4.5.seconds,
-            () => safeSetState(() => _shouldShowTripPlanning = true),
+            () =>
+                safeSetState(() => _shouldShowTripPlanning = _currentStep == 5),
           );
         }
       },
@@ -79,111 +80,118 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
               duration: 600.ms,
               curve: Curves.easeInOut,
               top: _shouldShowTripPlanning ? 340 : screenHeight,
-              child: AnimatedOpacity(
-                opacity: _currentStep == 5 && _isAuthenticated ? 1.0 : 0.0,
-                duration: 1.seconds,
-                curve: Curves.easeInOut,
-                child: Card(
-                  elevation: 40,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(40),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: min(screenWidth * 0.8, 1200),
-                        maxHeight: 800,
-                      ),
-                      child: InkWell(
-                        hoverColor: Colors.transparent,
-                        highlightColor: Colors.transparent,
-                        splashColor: Colors.transparent,
-                        focusColor: Colors.transparent,
-                        onHover: (value) => safeSetState(
-                          () => _isHovering = value,
+              child: IgnorePointer(
+                ignoring: !_shouldShowTripPlanning,
+                child: AnimatedOpacity(
+                  opacity: _currentStep == 5 && _isAuthenticated ? 1.0 : 0.0,
+                  duration: 1.seconds,
+                  curve: Curves.easeInOut,
+                  child: Card(
+                    elevation: 40,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: min(screenWidth * 0.8, 1200),
+                          maxHeight: 800,
                         ),
-                        onTap: () => context.goToTripPlanning(widget.tripId),
-                        child: Stack(
-                          alignment: Alignment.topCenter,
-                          children: [
-                            IgnorePointer(
-                              child: TripPlanningSection(
-                                tripId: widget.tripId,
+                        child: InkWell(
+                          hoverColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          onHover: (value) => safeSetState(
+                            () => _isHovering = value,
+                          ),
+                          onTap: () => context.goToTripPlanning(widget.tripId),
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              IgnorePointer(
+                                child: TripPlanningSection(
+                                  tripId: widget.tripId,
+                                ),
                               ),
-                            ),
-                            AnimatedOpacity(
-                              opacity: _isHovering ? 1.0 : 0.0,
-                              duration: 500.ms,
-                              curve: Curves.easeInOut,
-                              child: PointerInterceptor(
-                                child: Container(
-                                  height: double.infinity,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Theme.of(context).colorScheme.primary,
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .primary
-                                            .withValues(alpha: 0.0),
+
+                              // Overlay for hover effect to navigate to trip planning page
+                              AnimatedOpacity(
+                                opacity: _isHovering ? 1.0 : 0.0,
+                                duration: 500.ms,
+                                curve: Curves.easeInOut,
+                                child: PointerInterceptor(
+                                  child: Container(
+                                    height: double.infinity,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Theme.of(context).colorScheme.primary,
+                                          Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withValues(alpha: 0.0),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        SizedBox(height: 36),
+                                        Text(
+                                          'View Trip',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Opacity(
+                                          opacity: 0.6,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.ads_click_rounded,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimary,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Click to go the trip planning page',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      SizedBox(height: 36),
-                                      Text(
-                                        'View Trip',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onPrimary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Opacity(
-                                        opacity: 0.6,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.ads_click_rounded,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onPrimary,
-                                            ),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Click to go the trip planning page',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onPrimary,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

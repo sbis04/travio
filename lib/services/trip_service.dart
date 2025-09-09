@@ -234,4 +234,45 @@ class TripService {
       oldUserUid: oldUserUid,
     );
   }
+
+  // Update trip status
+  static Future<bool> updateTripStatus({
+    required String tripId,
+    required TripStatus status,
+  }) async {
+    return await FirestoreService.updateTripStatus(
+      tripId: tripId,
+      status: status,
+    );
+  }
+
+  // Enhanced link trip to current user with status update
+  static Future<bool> linkTripToCurrentUserWithStatusUpdate(
+      String tripId) async {
+    try {
+      // First link the trip
+      final linkSuccess = await linkTripToCurrentUser(tripId);
+
+      if (linkSuccess) {
+        // Then update status to ready
+        final statusSuccess = await updateTripStatus(
+          tripId: tripId,
+          status: TripStatus.ready,
+        );
+
+        if (statusSuccess) {
+          logPrint('✅ Trip linked and status updated to ready');
+        } else {
+          logPrint('⚠️ Trip linked but status update failed');
+        }
+
+        return true; // Return true if linking succeeded, regardless of status update
+      }
+
+      return false;
+    } catch (e) {
+      logPrint('❌ Error in enhanced trip linking: $e');
+      return false;
+    }
+  }
 }

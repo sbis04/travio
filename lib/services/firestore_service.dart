@@ -47,8 +47,8 @@ class FirestoreService {
     try {
       final querySnapshot = await _firestore
           .collection(_tripsCollection)
-          .where('userUid', isEqualTo: userUid)
-          .orderBy('createdAt', descending: true)
+          .where('user_uid', isEqualTo: userUid)
+          .orderBy('created_at', descending: true)
           .get();
 
       return querySnapshot.docs.map((doc) => Trip.fromFirestore(doc)).toList();
@@ -192,12 +192,33 @@ class FirestoreService {
     }
   }
 
+  // Update trip status
+  static Future<bool> updateTripStatus({
+    required String tripId,
+    required TripStatus status,
+  }) async {
+    try {
+      logPrint('📊 Updating trip status: $tripId → ${status.name}');
+
+      await _firestore.collection(_tripsCollection).doc(tripId).update({
+        'status': status.name,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      logPrint('✅ Trip status updated successfully');
+      return true;
+    } catch (e) {
+      logPrint('❌ Error updating trip status: $e');
+      return false;
+    }
+  }
+
   // Listen to user's trips (real-time)
   static Stream<List<Trip>> watchUserTrips(String userUid) {
     return _firestore
         .collection(_tripsCollection)
-        .where('userUid', isEqualTo: userUid)
-        .orderBy('createdAt', descending: true)
+        .where('user_uid', isEqualTo: userUid)
+        .orderBy('created_at', descending: true)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => Trip.fromFirestore(doc)).toList());
@@ -208,7 +229,7 @@ class FirestoreService {
     try {
       final querySnapshot = await _firestore
           .collection(_tripsCollection)
-          .where('userUid', isEqualTo: userUid)
+          .where('user_uid', isEqualTo: userUid)
           .get();
 
       final trips =

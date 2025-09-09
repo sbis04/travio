@@ -39,14 +39,16 @@ class _InviteCoTravelersViewState extends State<InviteCoTravelersView> {
 
       logPrint('👤 Linking trip to authenticated user: ${currentUser.uid}');
 
-      // Link the trip to the current authenticated user
-      final success = await TripService.linkTripToCurrentUser(tripId);
+      // Link the trip to the current authenticated user and update status
+      final success =
+          await TripService.linkTripToCurrentUserWithStatusUpdate(tripId);
 
       if (success) {
         logPrint('✅ Trip successfully linked to authenticated user');
         logPrint('   Trip ID: $tripId');
         logPrint('   User: ${currentUser.email ?? currentUser.uid}');
-        logPrint('   Trip is now private and owned by authenticated user');
+        logPrint(
+            '   Trip is now private, owned by authenticated user, and marked as ready');
       } else {
         logPrint('❌ Failed to link trip to authenticated user');
       }
@@ -60,7 +62,7 @@ class _InviteCoTravelersViewState extends State<InviteCoTravelersView> {
     super.initState();
     // get the web url of the current trip
     final webUrl = Uri.base.toString();
-    _linkController = TextEditingController(text: webUrl);
+    _linkController = TextEditingController(text: '$webUrl/plan');
   }
 
   @override
