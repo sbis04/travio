@@ -41,6 +41,7 @@ class _SelectDestinationViewState extends State<SelectDestinationView> {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 550),
           child: PlaceSearchField(
+            readOnly: true,
             controller: widget.controller,
             focusNode: widget.focusNode,
             isSearching: widget.isSearching,

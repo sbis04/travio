@@ -87,6 +87,7 @@ class _InviteCoTravelersViewState extends State<InviteCoTravelersView> {
             ),
             const SizedBox(height: 8),
             AppTextField(
+              readOnly: true,
               controller: _linkController,
               focusNode: _linkFocusNode,
               // enabled: false,

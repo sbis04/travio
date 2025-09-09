@@ -11,7 +11,7 @@ class AppTextField extends StatefulWidget {
     this.suffixIcon,
     this.textCapitalization,
     this.textInputAction,
-    this.enabled = true,
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
@@ -22,7 +22,7 @@ class AppTextField extends StatefulWidget {
   final Widget? suffixIcon;
   final TextCapitalization? textCapitalization;
   final TextInputAction? textInputAction;
-  final bool enabled;
+  final bool readOnly;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -40,7 +40,7 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   Widget build(BuildContext context) {
     return TextField(
-      enabled: widget.enabled,
+      readOnly: widget.readOnly,
       controller: widget.controller,
       focusNode: widget.focusNode,
       onChanged: widget.onChanged,

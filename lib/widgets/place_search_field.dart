@@ -21,6 +21,7 @@ class PlaceSearchField extends StatefulWidget {
     this.overlayHeight = 300.0,
     this.itemHeight = 60.0,
     this.debounceDelay = const Duration(milliseconds: 300),
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
@@ -33,6 +34,7 @@ class PlaceSearchField extends StatefulWidget {
   final double overlayHeight;
   final double itemHeight;
   final Duration debounceDelay;
+  final bool readOnly;
 
   @override
   State<PlaceSearchField> createState() => _PlaceSearchFieldState();
@@ -460,6 +462,7 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
       child: Focus(
         onKeyEvent: _handleKeyEvent,
         child: AppTextField(
+            readOnly: widget.readOnly,
             controller: widget.controller,
             focusNode: widget.focusNode,
             onChanged: _onSearchChanged,
