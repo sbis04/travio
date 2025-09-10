@@ -108,26 +108,11 @@ class AuthService {
     try {
       logPrint('🔐 Starting email/password sign-in...');
 
-      // Check if user is currently anonymous
-      final currentUser = _auth.currentUser;
-      final isAnonymous = currentUser?.isAnonymous ?? false;
-
-      UserCredential userCredential;
-
-      if (isAnonymous && currentUser != null) {
-        // Convert anonymous user to email/password user
-        logPrint('🔄 Converting anonymous user to email/password user...');
-        final credential =
-            EmailAuthProvider.credential(email: email, password: password);
-        userCredential = await currentUser.linkWithCredential(credential);
-        logPrint('✅ Anonymous user converted to email/password user');
-      } else {
-        // Sign in with email/password
-        userCredential = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      }
+      // Sign in with email/password
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       final user = userCredential.user;
       if (user != null) {
@@ -152,36 +137,15 @@ class AuthService {
     try {
       logPrint('🔐 Starting email/password sign-up...');
 
-      // Check if user is currently anonymous
-      final currentUser = _auth.currentUser;
-      final isAnonymous = currentUser?.isAnonymous ?? false;
+      // Create new account
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      UserCredential userCredential;
-
-      if (isAnonymous && currentUser != null) {
-        // Convert anonymous user to email/password user
-        logPrint('🔄 Converting anonymous user to email/password user...');
-        final credential =
-            EmailAuthProvider.credential(email: email, password: password);
-        userCredential = await currentUser.linkWithCredential(credential);
-
-        // Update display name if provided
-        if (displayName != null && displayName.isNotEmpty) {
-          await userCredential.user?.updateDisplayName(displayName);
-        }
-
-        logPrint('✅ Anonymous user converted to email/password user');
-      } else {
-        // Create new account
-        userCredential = await _auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-
-        // Update display name if provided
-        if (displayName != null && displayName.isNotEmpty) {
-          await userCredential.user?.updateDisplayName(displayName);
-        }
+      // Update display name if provided
+      if (displayName != null && displayName.isNotEmpty) {
+        await userCredential.user?.updateDisplayName(displayName);
       }
 
       final user = userCredential.user;

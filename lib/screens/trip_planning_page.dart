@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:travio/models/place.dart';
 import 'package:travio/models/trip.dart';
 import 'package:travio/services/auth_service.dart';
 import 'package:travio/services/document_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:travio/services/place_photo_cache_service.dart';
 import 'package:travio/services/trip_service.dart';
 import 'package:travio/utils/utils.dart';
@@ -82,60 +84,138 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
   // Map state
   Set<Marker> _markers = {};
 
+  // Stream subscriptions
+  StreamSubscription<Trip?>? _tripSubscription;
+  StreamSubscription<List<Place>>? _visitPlacesSubscription;
+  StreamSubscription<List<TripDocument>>? _documentsSubscription;
+  StreamSubscription<List<FlightInformation>>? _flightInfoSubscription;
+  StreamSubscription<List<AccommodationInformation>>?
+      _accommodationInfoSubscription;
+
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _initializeStreams();
   }
 
-  Future<void> _initializeData() async {
-    await Future.wait([
-      _loadTripData(),
-      _loadVisitPlaces(),
-      _loadAccommodationData(),
-      _loadFlightData(),
-    ]);
-
-    // if (mounted) {
-    //   _setDefaultSelectedSection();
-    // }
+  @override
+  void dispose() {
+    _tripSubscription?.cancel();
+    _visitPlacesSubscription?.cancel();
+    _documentsSubscription?.cancel();
+    _flightInfoSubscription?.cancel();
+    _accommodationInfoSubscription?.cancel();
+    super.dispose();
   }
 
-  Future<void> _loadFlightData() async {
-    try {
-      logPrint('✈️ Loading flight data for trip: ${widget.tripId}');
+  void _initializeStreams() {
+    _setupTripStream();
+    _setupVisitPlacesStream();
+    _setupDocumentsStream();
+  }
 
-      // Get all documents for this trip
-      final documents = await DocumentService.getDocuments(widget.tripId);
-      final flightDocuments =
-          documents.where((doc) => doc.type == DocumentType.flight).toList();
+  void _setupTripStream() {
+    _tripSubscription = _watchTrip().listen(
+      (trip) async {
+        if (trip != null) {
+          // Load place images when trip data changes
+          final images = await PlacePhotoCacheService.getPlacePhotos(
+            placeId: trip.placeId,
+            maxPhotos: 20,
+          );
 
-      // Load flight info from subcollections
-      await _loadAllFlightInfo(flightDocuments);
+          safeSetState(() {
+            _trip = trip;
+            _placeImages = images;
+            _isLoading = false;
+          });
 
-      if (mounted) {
-        setState(() {
+          logPrint('✅ Trip data updated: ${trip.placeName}');
+          logPrint('📸 Loaded ${images.length} images for place');
+        }
+      },
+      onError: (error) {
+        logPrint('❌ Error in trip stream: $error');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      },
+    );
+  }
+
+  void _setupVisitPlacesStream() {
+    _visitPlacesSubscription =
+        TripService.watchVisitPlaces(widget.tripId).listen(
+      (places) {
+        safeSetState(() {
+          _visitPlaces = places;
           _isLoading = false;
         });
 
-        logPrint('✅ Loaded ${flightDocuments.length} flight document(s)');
-        logPrint('✈️ Total flights: ${_flightInfo.length}');
-      }
-    } catch (e) {
-      logPrint('❌ Error loading flight data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+        logPrint('✅ Visit places updated: ${places.length} place(s)');
+
+        // Update markers when places change
+        _initializeAllPlaceMarkers();
+      },
+      onError: (error) {
+        logPrint('❌ Error in visit places stream: $error');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      },
+    );
   }
 
-  Future<void> _loadAllFlightInfo(List<TripDocument> flightDocuments) async {
+  void _setupDocumentsStream() {
+    _documentsSubscription =
+        DocumentService.watchDocuments(widget.tripId).listen(
+      (documents) async {
+        // Separate flight and accommodation documents
+        final flightDocuments =
+            documents.where((doc) => doc.type == DocumentType.flight).toList();
+        final hotelDocuments =
+            documents.where((doc) => doc.type == DocumentType.hotel).toList();
+
+        // Load flight and accommodation info
+        await Future.wait([
+          _loadAllFlightInfoFromDocuments(flightDocuments),
+          _loadAllAccommodationInfoFromDocuments(hotelDocuments),
+        ]);
+
+        logPrint('✅ Documents updated: ${documents.length} document(s)');
+        logPrint(
+            '   Flight docs: ${flightDocuments.length}, Hotel docs: ${hotelDocuments.length}');
+      },
+      onError: (error) {
+        logPrint('❌ Error in documents stream: $error');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      },
+    );
+  }
+
+  Stream<Trip?> _watchTrip() {
+    return FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return Trip.fromFirestore(snapshot);
+      }
+      return null;
+    });
+  }
+
+  Future<void> _loadAllFlightInfoFromDocuments(
+      List<TripDocument> flightDocuments) async {
     try {
       final List<FlightInformation> allFlights = [];
 
       for (final document in flightDocuments) {
         try {
-          final flightCollection = await DocumentService.firestore
+          final flightCollection = await FirebaseFirestore.instance
               .collection('trips')
               .doc(widget.tripId)
               .collection('documents')
@@ -165,42 +245,14 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
     }
   }
 
-  Future<void> _loadAccommodationData() async {
-    try {
-      logPrint('🏨 Loading accommodation data for trip: ${widget.tripId}');
-
-      // Get all documents for this trip
-      final documents = await DocumentService.getDocuments(widget.tripId);
-      final hotelDocuments =
-          documents.where((doc) => doc.type == DocumentType.hotel).toList();
-
-      // Load accommodation info from subcollections
-      await _loadAllAccommodationInfo(hotelDocuments);
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        logPrint('✅ Loaded ${hotelDocuments.length} hotel document(s)');
-        logPrint('🏨 Total accommodations: ${_accommodationInfo.length}');
-      }
-    } catch (e) {
-      logPrint('❌ Error loading accommodation data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _loadAllAccommodationInfo(
+  Future<void> _loadAllAccommodationInfoFromDocuments(
       List<TripDocument> hotelDocuments) async {
     try {
       final List<AccommodationInformation> allAccommodations = [];
 
       for (final document in hotelDocuments) {
         try {
-          final accommodationCollection = await DocumentService.firestore
+          final accommodationCollection = await FirebaseFirestore.instance
               .collection('trips')
               .doc(widget.tripId)
               .collection('documents')
@@ -229,29 +281,6 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
       }
     } catch (e) {
       logPrint('❌ Error in batch accommodation info loading: $e');
-    }
-  }
-
-  Future<void> _loadVisitPlaces() async {
-    try {
-      logPrint('📍 Loading visit places for trip: ${widget.tripId}');
-
-      final places = await TripService.getVisitPlaces(widget.tripId);
-
-      safeSetState(() {
-        _visitPlaces = places;
-        _isLoading = false;
-      });
-
-      logPrint('✅ Loaded ${places.length} visit place(s)');
-
-      // Initialize markers after loading visit places
-      _initializeAllPlaceMarkers();
-    } catch (e) {
-      logPrint('❌ Error loading visit places: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 
@@ -290,38 +319,6 @@ class _TripPlanningSectionState extends State<TripPlanningSection> {
         '🗺️ Updated ${markers.length} place markers (selected: $selectedPlaceId)');
 
     setState(() => _markers = markers);
-  }
-
-  Future<void> _loadTripData() async {
-    try {
-      logPrint('📱 Loading trip data for planning page: ${widget.tripId}');
-
-      final trip = await TripService.getTrip(widget.tripId);
-      if (trip == null) {
-        logPrint('❌ Trip not found: ${widget.tripId}');
-        return;
-      }
-
-      // Load place images from cache
-      final images = await PlacePhotoCacheService.getPlacePhotos(
-        placeId: trip.placeId,
-        maxPhotos: 20,
-      );
-
-      safeSetState(() {
-        _trip = trip;
-        _placeImages = images;
-        _isLoading = false;
-      });
-
-      logPrint('✅ Trip planning data loaded: ${trip.placeName}');
-      logPrint('📸 Loaded ${images.length} images for place');
-    } catch (e) {
-      logPrint('❌ Error loading trip planning data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   void _onMapCreated(GoogleMapController controller) {

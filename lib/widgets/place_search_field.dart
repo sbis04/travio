@@ -62,6 +62,7 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
 
       if (widget.focusNode.hasFocus) {
         _showOverlay();
+        Future.delayed(const Duration(milliseconds: 300), _updateOverlay);
       } else {
         _highlightedIndex = -1;
         _hideOverlay();
@@ -167,9 +168,7 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
     _overlayEntry = null;
   }
 
-  void _updateOverlay() {
-    _overlayEntry?.markNeedsBuild();
-  }
+  void _updateOverlay() => _overlayEntry?.markNeedsBuild();
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
@@ -315,6 +314,7 @@ class _PlaceSearchFieldState extends State<PlaceSearchField> {
           final isHighlighted = _highlightedIndex == index;
 
           return InkWell(
+            mouseCursor: SystemMouseCursors.click,
             borderRadius: BorderRadius.only(
               topLeft: index == 0 ? Radius.circular(12) : Radius.zero,
               topRight: index == 0 ? Radius.circular(12) : Radius.zero,
